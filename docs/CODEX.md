@@ -2,6 +2,13 @@
 
 This is an implementation specification, not evidence that the application or pipeline exists. Agent orchestration and task-based effort are defined in [AGENTS.md](../AGENTS.md).
 
+## Generated code and comments
+
+- For generated or edited source-code comments, read and apply [$antislop-code](C:/Users/luqma/.codex/skills/antislop-code/SKILL.md) together with its core [antislop](C:/Users/luqma/.codex/skills/antislop/SKILL.md).
+- Keep comments that explain non-obvious intent, constraints, edge cases, security, performance, protocols, API behavior, or workarounds.
+- Remove comments that only narrate obvious code, add decorative separators or emoji, use empty labels, mark vague future work, or mark the end of a block.
+- This check is comment-only. Do not change executable code, identifiers, formatting, or behavior to satisfy it.
+
 ## Steps 11–12 — Stack and standards
 
 ### Frontend

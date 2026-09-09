@@ -102,23 +102,28 @@ apiClient.interceptors.response.use(
 // Type-safe convenience wrappers
 export const api = {
   get: async <T>(url: string, params?: Record<string, unknown>): Promise<T> => {
-    const response = await apiClient.get<ApiResponse<T>>(url, { params });
+    const config = { params, ...(url.startsWith('/api/') ? { baseURL: '' } : {}) };
+    const response = await apiClient.get<ApiResponse<T>>(url, config);
     return response.data.data;
   },
   post: async <T>(url: string, body?: unknown): Promise<T> => {
-    const response = await apiClient.post<ApiResponse<T>>(url, body);
+    const config = url.startsWith('/api/') ? { baseURL: '' } : {};
+    const response = await apiClient.post<ApiResponse<T>>(url, body, config);
     return response.data.data;
   },
   put: async <T>(url: string, body?: unknown): Promise<T> => {
-    const response = await apiClient.put<ApiResponse<T>>(url, body);
+    const config = url.startsWith('/api/') ? { baseURL: '' } : {};
+    const response = await apiClient.put<ApiResponse<T>>(url, body, config);
     return response.data.data;
   },
   patch: async <T>(url: string, body?: unknown): Promise<T> => {
-    const response = await apiClient.patch<ApiResponse<T>>(url, body);
+    const config = url.startsWith('/api/') ? { baseURL: '' } : {};
+    const response = await apiClient.patch<ApiResponse<T>>(url, body, config);
     return response.data.data;
   },
   delete: async <T>(url: string, params?: Record<string, unknown>): Promise<T> => {
-    const response = await apiClient.delete<ApiResponse<T>>(url, { params });
+    const config = { params, ...(url.startsWith('/api/') ? { baseURL: '' } : {}) };
+    const response = await apiClient.delete<ApiResponse<T>>(url, config);
     return response.data.data;
   },
 };
@@ -142,5 +147,11 @@ export const telemetryApi = {
 
   getHistory: (machineId: string, limit = 50) => 
     api.get<import('../types').TelemetryPoint[]>(`/api/v2/telemetry/machines/${machineId}/history`, { limit }),
+
+  getTimeSeries: (machineId: string, tag: string, params?: { from?: string; to?: string; bucket?: string }) =>
+    api.get<import('../types').TimeSeriesResponse>(`/api/v2/telemetry/machines/${machineId}/series`, { tag, ...params }),
+
+  executeRetention: () =>
+    api.post<import('../types').RetentionReport>('/api/v2/telemetry/retention/execute'),
 };
 

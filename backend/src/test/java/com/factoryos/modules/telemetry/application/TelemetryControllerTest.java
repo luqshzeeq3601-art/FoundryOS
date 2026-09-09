@@ -45,6 +45,9 @@ class TelemetryControllerTest {
     private TelemetryIngestionService telemetryService;
 
     @MockBean
+    private TelemetryDownsamplingService downsamplingService;
+
+    @MockBean
     private JwtAuthenticationFilter jwtAuthenticationFilter;
 
     @MockBean
@@ -164,6 +167,44 @@ class TelemetryControllerTest {
         UUID mappingId = UUID.randomUUID();
 
         mockMvc.perform(delete("/api/v2/telemetry/machines/{machineId}/tags/{mappingId}", machineId, mappingId))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("Authenticated user can query downsampled time-series data")
+    @WithMockUser(username = "operator@factoryos.local", roles = {"OPERATOR"})
+    void testGetTimeSeriesSuccess() throws Exception {
+        UUID machineId = UUID.randomUUID();
+        TimeSeriesResponseDto dto = new TimeSeriesResponseDto();
+        dto.setMachineId(machineId);
+        dto.setBucketResolution("1h");
+        dto.setPointCount(24);
+        dto.setQueryExecutionMs(15);
+        when(downsamplingService.getTimeSeries(eq(machineId), eq("SPINDLE_SPEED"), any(), any(), any()))
+                .thenReturn(dto);
+
+        mockMvc.perform(get("/api/v2/telemetry/machines/{machineId}/series", machineId)
+                        .param("tag", "SPINDLE_SPEED")
+                        .param("bucket", "1h"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("Admin can trigger telemetry retention execution")
+    @WithMockUser(username = "admin@factoryos.local", roles = {"ADMIN"})
+    void testExecuteRetentionAsAdmin() throws Exception {
+        RetentionExecutionReport report = new RetentionExecutionReport(500, 50, 5, 25);
+        when(downsamplingService.executeRetentionPolicy(any(), any(), any())).thenReturn(report);
+
+        mockMvc.perform(post("/api/v2/telemetry/retention/execute"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("Operator is forbidden from triggering telemetry retention execution")
+    @WithMockUser(username = "operator@factoryos.local", roles = {"OPERATOR"})
+    void testExecuteRetentionAsOperatorForbidden() throws Exception {
+        mockMvc.perform(post("/api/v2/telemetry/retention/execute"))
                 .andExpect(status().isForbidden());
     }
 }

@@ -359,3 +359,34 @@ export interface TelemetryIngestResponse {
   alerts: string[];
 }
 
+export interface TimeSeriesBucket {
+  bucket: string;
+  avg: number;
+  min: number;
+  max: number;
+  count: number;
+  quality: string;
+}
+
+export interface TimeSeriesResponse {
+  machineId: string;
+  machineName: string;
+  tagName: string;
+  unit: string;
+  bucketResolution: string;
+  from: string;
+  to: string;
+  pointCount: number;
+  queryExecutionMs: number;
+  series: TimeSeriesBucket[];
+}
+
+export interface RetentionReport {
+  rawPointsPruned: number;
+  rollups1mPruned: number;
+  rollups1hPruned: number;
+  executionTimeMs: number;
+  executedAt: string;
+}
+
+

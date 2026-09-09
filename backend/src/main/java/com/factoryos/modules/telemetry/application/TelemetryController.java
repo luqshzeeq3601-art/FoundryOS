@@ -18,9 +18,14 @@ import java.util.UUID;
 public class TelemetryController {
 
     private final TelemetryIngestionService telemetryService;
+    private final TelemetryDownsamplingService downsamplingService;
 
-    public TelemetryController(TelemetryIngestionService telemetryService) {
+    public TelemetryController(
+            TelemetryIngestionService telemetryService,
+            TelemetryDownsamplingService downsamplingService
+    ) {
         this.telemetryService = telemetryService;
+        this.downsamplingService = downsamplingService;
     }
 
     @PostMapping("/machines/{machineId}/tags")
@@ -79,5 +84,26 @@ public class TelemetryController {
     ) {
         List<TelemetryPointDto> history = telemetryService.getTelemetryHistory(machineId, limit);
         return ResponseEntity.ok(ApiResponse.ok(history));
+    }
+
+    @GetMapping("/machines/{machineId}/series")
+    public ResponseEntity<ApiResponse<TimeSeriesResponseDto>> getTimeSeries(
+            @PathVariable UUID machineId,
+            @RequestParam String tag,
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE_TIME) java.time.Instant from,
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE_TIME) java.time.Instant to,
+            @RequestParam(required = false) String bucket
+    ) {
+        com.factoryos.modules.telemetry.domain.DownsampleBucket downsampleBucket = 
+                com.factoryos.modules.telemetry.domain.DownsampleBucket.fromCode(bucket);
+        TimeSeriesResponseDto series = downsamplingService.getTimeSeries(machineId, tag, from, to, downsampleBucket);
+        return ResponseEntity.ok(ApiResponse.ok(series));
+    }
+
+    @PostMapping("/retention/execute")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<RetentionExecutionReport>> executeRetention() {
+        RetentionExecutionReport report = downsamplingService.executeRetentionPolicy(null, null, null);
+        return ResponseEntity.ok(ApiResponse.ok(report, "Telemetry retention executed"));
     }
 }

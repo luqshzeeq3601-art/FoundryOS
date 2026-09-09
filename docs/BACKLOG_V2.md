@@ -51,11 +51,14 @@ FactoryOS v1.0.0 delivered a hardened single-plant modular monolith with manual/
   - Continuous ingestion of time-series points with automatic chunk partitioning by day/week.
   - Automated continuous aggregate downsampling (1s raw -> 1min avg/min/max after 7 days -> 1hour avg after 30 days).
   - Retention policies enforce storage ceilings without blocking writes.
+  - Sub-200ms query performance over 30-day telemetry intervals.
 - **Tasks:**
-  - [ ] Enable TimescaleDB hypertables or ClickHouse storage adapter for `machine_telemetry_raw`.
-  - [ ] Define continuous rollup views for operational KPIs.
-  - [ ] Implement query API with date-range bucket downsampling (`/api/v2/telemetry/machines/{id}/series`).
-  - [ ] Validate query response times $< 200$ms over 30-day telemetry intervals.
+  - [x] Enable TimescaleDB hypertables or storage adapter schema for `machine_telemetry_points`, `machine_telemetry_rollups_1m`, `machine_telemetry_rollups_1h` (Flyway `V3__telemetry_downsampling_and_retention.sql`).
+  - [x] Define continuous rollup aggregation engine in `TelemetryDownsamplingService` computing avg/min/max/sample counts.
+  - [x] Implement query API with date-range bucket downsampling (`GET /api/v2/telemetry/machines/{id}/series`) and auto-resolution (`1s` for $\le 2$h, `1m` for $\le 7$d, `1h` for $> 7$d).
+  - [x] Implement retention policy pruning API (`POST /api/v2/telemetry/retention/execute`) with default 7d raw / 30d 1m / 365d 1h policies.
+  - [x] Validate query response times $< 200$ms over 30-day telemetry intervals (`TelemetryDownsamplingPerformanceTest`).
+  - [x] Build frontend time-series downsampling analytics chart and retention modal adhering to `industrial-brutalist-ui`.
 
 #### E4-S3 — Automated Micro-Stop & Downtime Detection
 - **Story:** As a Production Supervisor, I want FactoryOS to automatically trigger downtime events when a machine stops cycling during an active production order, distinguishing micro-stops ($< 3$ minutes) from major breakdowns.

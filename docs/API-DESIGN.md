@@ -228,6 +228,8 @@ Introduced in Sprint 6 (Epic 4: Story E4-S1) to support automated machine teleme
 | `POST /api/v2/telemetry/ingest` | `machineId`, `gatewayId?`, `points: [{tagName, value, unit?, quality?, timestamp?}]` | 200 TelemetryIngestResponse | Admin, Engineer |
 | `GET /api/v2/telemetry/machines/{id}/live` | None | 200 MachineLiveTelemetry | All Authenticated |
 | `GET /api/v2/telemetry/machines/{id}/history` | `limit?` (default 50, max 200) | 200 list | All Authenticated |
+| `GET /api/v2/telemetry/machines/{id}/series` | Query: `tag` (required), `from?` (ISO-8601), `to?` (ISO-8601), `bucket?` (`1s`, `1m`, `1h`, `AUTO`) | 200 TimeSeriesResponse | All Authenticated |
+| `POST /api/v2/telemetry/retention/execute` | None | 200 RetentionExecutionReport | Admin |
 
 ### Rules & Invariants
 - **Protocols Supported:** `OPC_UA`, `MQTT_SPARKPLUG_B`, `MODBUS_TCP`.
@@ -236,4 +238,15 @@ Introduced in Sprint 6 (Epic 4: Story E4-S1) to support automated machine teleme
 - **Scaling:** Ingested raw sensor register values are multiplied by the registered `scaleFactor`.
 - **Anomaly Detection:** ISO 10816 vibration thresholds ($> 4.5$ mm/s) and thermal thresholds ($> 80.0$ °C) trigger automatic warning alerts in the ingestion response.
 - **Timestamp Filtering:** Timestamps older than 7 days or more than 5 minutes in the future are clamped to server ingest time to maintain partition sanity.
+- **Continuous Downsampling Rollups (E4-S2):**
+  - High-frequency 1s raw telemetry points are continuously aggregated into 1-minute (`machine_telemetry_rollups_1m`) and 1-hour (`machine_telemetry_rollups_1h`) buckets recording `avg_value`, `min_value`, `max_value`, and `sample_count`.
+  - Auto-resolution logic selects optimal bucket based on query date range:
+    - Range $\le 2$ hours: `1s` raw telemetry resolution.
+    - Range $\le 7$ days: `1m` continuous rollup resolution.
+    - Range $> 7$ days: `1h` continuous rollup resolution.
+  - Query SLA: Under 200 ms latency guaranteed for 30-day analytics windows (720 hourly points).
+- **Storage Retention Policy (E4-S2):**
+  - Default retention: 7 days for raw telemetry, 30 days for 1-minute rollups, 365 days for 1-hour rollups.
+  - Automated pruning executed via `POST /api/v2/telemetry/retention/execute` without blocking incoming writes.
+
 

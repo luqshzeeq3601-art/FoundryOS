@@ -22,4 +22,16 @@ public interface MachineTelemetryRepository extends JpaRepository<MachineTelemet
 
     @Query("SELECT mtp FROM MachineTelemetryPoint mtp WHERE mtp.machine.id = :machineId AND mtp.timestamp >= :since ORDER BY mtp.timestamp ASC")
     List<MachineTelemetryPoint> findByMachineIdAndTimestampAfter(@Param("machineId") UUID machineId, @Param("since") Instant since);
+
+    @Query("SELECT mtp FROM MachineTelemetryPoint mtp WHERE mtp.machine.id = :machineId AND mtp.tagName = :tagName AND mtp.timestamp >= :from AND mtp.timestamp <= :to ORDER BY mtp.timestamp ASC")
+    List<MachineTelemetryPoint> findSeries(
+            @Param("machineId") UUID machineId,
+            @Param("tagName") String tagName,
+            @Param("from") Instant from,
+            @Param("to") Instant to
+    );
+
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("DELETE FROM MachineTelemetryPoint mtp WHERE mtp.timestamp < :cutoff")
+    int pruneOlderThan(@Param("cutoff") Instant cutoff);
 }

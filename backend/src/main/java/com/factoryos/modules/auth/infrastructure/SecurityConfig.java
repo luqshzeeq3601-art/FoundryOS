@@ -62,6 +62,7 @@ public class SecurityConfig {
                         .requestMatchers(antMatcher(HttpMethod.POST, "/api/v2/telemetry/ingest"), antMatcher("/api/v2/telemetry/ingest/**")).hasAnyRole("ADMIN", "ENGINEER")
                         .requestMatchers(antMatcher(HttpMethod.POST, "/api/v2/telemetry/machines/*/tags"), antMatcher("/api/v2/telemetry/machines/*/tags/**")).hasAnyRole("ADMIN", "ENGINEER")
                         .requestMatchers(antMatcher(HttpMethod.DELETE, "/api/v2/telemetry/machines/*/tags/*")).hasRole("ADMIN")
+                        .requestMatchers(antMatcher(HttpMethod.POST, "/api/v2/telemetry/retention/**")).hasRole("ADMIN")
                         .requestMatchers(antMatcher("/api/v2/telemetry/**")).authenticated()
                         .anyRequest().authenticated()
                 )
