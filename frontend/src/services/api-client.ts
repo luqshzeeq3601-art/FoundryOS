@@ -2,6 +2,7 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { ApiResponse } from '../types';
 
 let accessToken: string | null = localStorage.getItem('factoryos_access_token');
+let activePlantId: string | null = localStorage.getItem('factoryos_active_plant_id');
 let isRefreshing = false;
 let failedQueue: Array<{
   resolve: (token: string) => void;
@@ -30,6 +31,17 @@ export const setStoredAccessToken = (token: string | null) => {
 
 export const getStoredAccessToken = () => accessToken;
 
+export const setStoredActivePlantId = (plantId: string | null) => {
+  activePlantId = plantId;
+  if (plantId) {
+    localStorage.setItem('factoryos_active_plant_id', plantId);
+  } else {
+    localStorage.removeItem('factoryos_active_plant_id');
+  }
+};
+
+export const getStoredActivePlantId = () => activePlantId;
+
 export const apiClient = axios.create({
   baseURL: '/api/v1',
   headers: {
@@ -42,6 +54,9 @@ apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     if (accessToken) {
       config.headers.set('Authorization', `Bearer ${accessToken}`);
+    }
+    if (activePlantId) {
+      config.headers.set('X-Plant-ID', activePlantId);
     }
     return config;
   },
@@ -180,6 +195,45 @@ export const barcodeApi = {
 
   getBom: (productCode: string) =>
     api.get<import('../types').BomItemDto[]>(`/api/v2/barcode/bom/${productCode}`),
+};
+
+// Hierarchy & Multi-Tenant API (v2 Epic 5)
+export const hierarchyApi = {
+  getEnterprises: () =>
+    api.get<import('../types').EnterpriseDto[]>('/api/v2/hierarchy/enterprises'),
+
+  getEnterprise: (id: string) =>
+    api.get<import('../types').EnterpriseDto>(`/api/v2/hierarchy/enterprises/${id}`),
+
+  getAuthorizedPlants: () =>
+    api.get<import('../types').PlantDto[]>('/api/v2/hierarchy/plants'),
+
+  getPlantHierarchyTree: (plantId: string) =>
+    api.get<import('../types').HierarchyTreeDto>(`/api/v2/hierarchy/plants/${plantId}/tree`),
+
+  createPlant: (data: import('../types').CreatePlantRequest) =>
+    api.post<import('../types').PlantDto>('/api/v2/hierarchy/plants', data),
+
+  createArea: (plantId: string, data: import('../types').CreateAreaRequest) =>
+    api.post<import('../types').ProductionAreaDto>(`/api/v2/hierarchy/plants/${plantId}/areas`, data),
+
+  createLine: (areaId: string, data: import('../types').CreateLineRequest) =>
+    api.post<import('../types').ProductionLineDto>(`/api/v2/hierarchy/areas/${areaId}/lines`, data),
+
+  createWorkCell: (lineId: string, data: import('../types').CreateWorkCellRequest) =>
+    api.post<import('../types').WorkCellDto>(`/api/v2/hierarchy/lines/${lineId}/cells`, data),
+
+  getUserMemberships: (userId: string) =>
+    api.get<import('../types').UserPlantMembershipDto[]>(`/api/v2/hierarchy/users/${userId}/memberships`),
+
+  assignMembership: (data: import('../types').AssignPlantMembershipRequest) =>
+    api.post<import('../types').UserPlantMembershipDto>('/api/v2/hierarchy/memberships', data),
+};
+
+// Auth API helpers
+export const authApi = {
+  switchPlant: (plantId: string) =>
+    api.post<import('../types').LoginResponse>('/auth/switch-plant', { plantId }),
 };
 
 

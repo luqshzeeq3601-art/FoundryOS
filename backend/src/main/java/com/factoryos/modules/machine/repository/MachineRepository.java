@@ -28,6 +28,21 @@ public interface MachineRepository extends JpaRepository<Machine, UUID> {
 
     long countByIsDeletedFalse();
 
+    List<Machine> findByPlantIdAndIsDeletedFalse(UUID plantId);
+
+    List<Machine> findByWorkCellIdAndIsDeletedFalse(UUID workCellId);
+
+    @Query("SELECT m FROM Machine m WHERE m.isDeleted = false " +
+           "AND (:plantId IS NULL OR m.plant.id = :plantId) " +
+           "AND (:status IS NULL OR m.status = :status) " +
+           "AND (:search IS NULL OR lower(m.name) LIKE lower(concat('%', :search, '%')) OR lower(m.serialNumber) LIKE lower(concat('%', :search, '%')) OR lower(m.location) LIKE lower(concat('%', :search, '%')))")
+    Page<Machine> searchMachinesWithPlant(
+            @Param("plantId") UUID plantId,
+            @Param("status") MachineStatus status,
+            @Param("search") String search,
+            Pageable pageable
+    );
+
     @Query("SELECT m FROM Machine m WHERE m.isDeleted = false " +
            "AND (:status IS NULL OR m.status = :status) " +
            "AND (:search IS NULL OR lower(m.name) LIKE lower(concat('%', :search, '%')) OR lower(m.serialNumber) LIKE lower(concat('%', :search, '%')) OR lower(m.location) LIKE lower(concat('%', :search, '%')))")

@@ -85,11 +85,14 @@ FactoryOS v1.0.0 delivered a hardened single-plant modular monolith with manual/
   - Hierarchy model: `Enterprise -> Plant / Site -> Production Area -> Line -> Work Cell -> Machine`.
   - Strict data partitioning: plant-scoped users cannot read or modify data belonging to other plants.
   - Multi-tenant role assignments (e.g., user is `PRODUCTION_MANAGER` at Plant A, but `VIEWER` at Plant B).
+  - PostgreSQL Row-Level Security (RLS) and TenantContextFilter thread-local resolution with `X-Plant-ID` header.
 - **Tasks:**
-  - [ ] Introduce `PlantEntity` and `EnterpriseOrganizationEntity` with hierarchical foreign keys.
-  - [ ] Implement tenant context resolver filter (`TenantContextFilter`) and Row-Level Security (RLS) policies.
-  - [ ] Update JWT claims to include authorized plant list and default active plant.
-  - [ ] Add cross-tenant isolation security tests.
+  - [x] Introduce `Enterprise`, `Plant`, `ProductionArea`, `ProductionLine`, `WorkCell`, and `UserPlantMembership` domain entities and repositories (`V6__enterprise_multi_tenant_hierarchy.sql`).
+  - [x] Implement tenant context resolver filter (`TenantContextFilter`, `TenantContextHolder`, MDC propagation) and PostgreSQL Row-Level Security (RLS) policies.
+  - [x] Update JWT claims to include authorized plant list, default plant, and plant-switching endpoint (`/api/v1/auth/switch-plant`).
+  - [x] Build multi-tenant equipment tree REST endpoints (`/api/v2/hierarchy/**`).
+  - [x] Build Industrial Brutalist plant switcher (`PlantSwitcher.tsx`), hierarchy tree explorer (`HierarchyManagementView.tsx`), and auth context state integration.
+  - [x] Add comprehensive cross-tenant security integration tests proving zero cross-plant data leakage (`CrossTenantSecurityIntegrationTest`, `TenantContextFilterTest`, `HierarchyControllerTest`).
 
 #### E5-S2 — Enterprise Fleet Analytics & Cross-Plant Benchmarking
 - **Story:** As an Operations Director, I want a multi-plant executive comparison dashboard to benchmark OEE, availability, and scrap rates across plants and production lines.

@@ -8,10 +8,11 @@ import {
   Wrench, 
   ShieldCheck, 
   Users,
-  Radio
+  Radio,
+  FolderTree
 } from 'lucide-react';
 
-export type TabId = 'dashboard' | 'machines' | 'telemetry' | 'downtime' | 'production' | 'maintenance' | 'audit' | 'admin';
+export type TabId = 'dashboard' | 'machines' | 'telemetry' | 'downtime' | 'production' | 'maintenance' | 'hierarchy' | 'audit' | 'admin';
 
 interface NavigationProps {
   activeTab: TabId;
@@ -28,6 +29,12 @@ export const Navigation: React.FC<NavigationProps> = ({ activeTab, onTabChange }
     { id: 'downtime', label: 'DOWNTIME', icon: <AlertTriangle size={16} /> },
     { id: 'production', label: 'PRODUCTION', icon: <ClipboardList size={16} /> },
     { id: 'maintenance', label: 'MAINTENANCE', icon: <Wrench size={16} /> },
+    { 
+      id: 'hierarchy', 
+      label: 'HIERARCHY', 
+      icon: <FolderTree size={16} />, 
+      roles: ['ADMIN', 'PRODUCTION_MANAGER', 'ENGINEER'] 
+    },
     { 
       id: 'audit', 
       label: 'AUDIT LOG', 

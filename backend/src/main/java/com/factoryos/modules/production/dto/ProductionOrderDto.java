@@ -11,6 +11,9 @@ public class ProductionOrderDto {
     private String orderNumber;
     private UUID machineId;
     private String machineName;
+    private UUID plantId;
+    private String plantCode;
+    private String plantName;
     private String productCode;
     private String productDescription;
     private int plannedQuantity;
@@ -32,8 +35,15 @@ public class ProductionOrderDto {
         ProductionOrderDto dto = new ProductionOrderDto();
         dto.setId(order.getId());
         dto.setOrderNumber(order.getOrderNumber());
-        dto.setMachineId(order.getMachine().getId());
-        dto.setMachineName(order.getMachine().getName());
+        if (order.getMachine() != null) {
+            dto.setMachineId(order.getMachine().getId());
+            dto.setMachineName(order.getMachine().getName());
+        }
+        if (order.getPlant() != null) {
+            dto.setPlantId(order.getPlant().getId());
+            dto.setPlantCode(order.getPlant().getCode());
+            dto.setPlantName(order.getPlant().getName());
+        }
         dto.setProductCode(order.getProductCode());
         dto.setProductDescription(order.getProductDescription());
         dto.setPlannedQuantity(order.getPlannedQuantity());
@@ -80,6 +90,30 @@ public class ProductionOrderDto {
 
     public void setMachineName(String machineName) {
         this.machineName = machineName;
+    }
+
+    public UUID getPlantId() {
+        return plantId;
+    }
+
+    public void setPlantId(UUID plantId) {
+        this.plantId = plantId;
+    }
+
+    public String getPlantCode() {
+        return plantCode;
+    }
+
+    public void setPlantCode(String plantCode) {
+        this.plantCode = plantCode;
+    }
+
+    public String getPlantName() {
+        return plantName;
+    }
+
+    public void setPlantName(String plantName) {
+        this.plantName = plantName;
     }
 
     public String getProductCode() {

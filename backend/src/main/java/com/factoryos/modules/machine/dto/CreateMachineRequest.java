@@ -4,6 +4,8 @@ import com.factoryos.modules.machine.domain.MachineStatus;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
+import java.util.UUID;
+
 public class CreateMachineRequest {
 
     @NotBlank(message = "Serial number is required")
@@ -22,6 +24,11 @@ public class CreateMachineRequest {
     private String description;
 
     private MachineStatus status = MachineStatus.IDLE;
+
+    private UUID plantId;
+    private UUID areaId;
+    private UUID lineId;
+    private UUID workCellId;
 
     public CreateMachineRequest() {
     }
@@ -64,5 +71,37 @@ public class CreateMachineRequest {
 
     public void setStatus(MachineStatus status) {
         this.status = status;
+    }
+
+    public UUID getPlantId() {
+        return plantId;
+    }
+
+    public void setPlantId(UUID plantId) {
+        this.plantId = plantId;
+    }
+
+    public UUID getAreaId() {
+        return areaId;
+    }
+
+    public void setAreaId(UUID areaId) {
+        this.areaId = areaId;
+    }
+
+    public UUID getLineId() {
+        return lineId;
+    }
+
+    public void setLineId(UUID lineId) {
+        this.lineId = lineId;
+    }
+
+    public UUID getWorkCellId() {
+        return workCellId;
+    }
+
+    public void setWorkCellId(UUID workCellId) {
+        this.workCellId = workCellId;
     }
 }

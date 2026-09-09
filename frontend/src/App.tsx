@@ -13,6 +13,7 @@ import { MaintenanceView } from './components/views/MaintenanceView';
 import { AdminUsersView } from './components/views/AdminUsersView';
 import { AuditLogView } from './components/views/AuditLogView';
 import { LiveTelemetryView } from './components/views/LiveTelemetryView';
+import { HierarchyManagementView } from './components/views/HierarchyManagementView';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -55,6 +56,8 @@ const MainLayout: React.FC = () => {
         return <ProductionView />;
       case 'maintenance':
         return <MaintenanceView />;
+      case 'hierarchy':
+        return <HierarchyManagementView />;
       case 'audit':
         return <AuditLogView />;
       case 'admin':

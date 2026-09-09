@@ -2,8 +2,10 @@ package com.factoryos.modules.auth.dto;
 
 import com.factoryos.modules.auth.domain.RoleType;
 import com.factoryos.modules.auth.domain.User;
+import com.factoryos.modules.tenant.dto.UserPlantMembershipDto;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 public class UserDto {
@@ -13,6 +15,11 @@ public class UserDto {
     private RoleType role;
     private boolean isActive;
     private boolean mustChangePassword;
+    private UUID activePlantId;
+    private String activePlantCode;
+    private String activePlantName;
+    private String plantRole;
+    private List<UserPlantMembershipDto> authorizedPlants;
     private Instant createdAt;
     private Instant updatedAt;
     private long version;
@@ -21,11 +28,14 @@ public class UserDto {
     }
 
     public static UserDto from(User user) {
+        if (user == null) return null;
         UserDto dto = new UserDto();
         dto.setId(user.getId());
         dto.setEmail(user.getEmail());
         dto.setDisplayName(user.getDisplayName());
-        dto.setRole(user.getRole().getName());
+        if (user.getRole() != null && user.getRole().getName() != null) {
+            dto.setRole(user.getRole().getName());
+        }
         dto.setActive(user.isActive());
         dto.setMustChangePassword(user.isMustChangePassword());
         dto.setCreatedAt(user.getCreatedAt());
@@ -80,6 +90,46 @@ public class UserDto {
 
     public void setMustChangePassword(boolean mustChangePassword) {
         this.mustChangePassword = mustChangePassword;
+    }
+
+    public UUID getActivePlantId() {
+        return activePlantId;
+    }
+
+    public void setActivePlantId(UUID activePlantId) {
+        this.activePlantId = activePlantId;
+    }
+
+    public String getActivePlantCode() {
+        return activePlantCode;
+    }
+
+    public void setActivePlantCode(String activePlantCode) {
+        this.activePlantCode = activePlantCode;
+    }
+
+    public String getActivePlantName() {
+        return activePlantName;
+    }
+
+    public void setActivePlantName(String activePlantName) {
+        this.activePlantName = activePlantName;
+    }
+
+    public String getPlantRole() {
+        return plantRole;
+    }
+
+    public void setPlantRole(String plantRole) {
+        this.plantRole = plantRole;
+    }
+
+    public List<UserPlantMembershipDto> getAuthorizedPlants() {
+        return authorizedPlants;
+    }
+
+    public void setAuthorizedPlants(List<UserPlantMembershipDto> authorizedPlants) {
+        this.authorizedPlants = authorizedPlants;
     }
 
     public Instant getCreatedAt() {

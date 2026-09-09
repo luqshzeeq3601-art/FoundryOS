@@ -28,6 +28,22 @@ public class Machine {
     @Column(nullable = false, length = 16)
     private MachineStatus status = MachineStatus.IDLE;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "plant_id")
+    private com.factoryos.modules.tenant.domain.Plant plant;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "area_id")
+    private com.factoryos.modules.tenant.domain.ProductionArea area;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "line_id")
+    private com.factoryos.modules.tenant.domain.ProductionLine line;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "work_cell_id")
+    private com.factoryos.modules.tenant.domain.WorkCell workCell;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
 
@@ -136,6 +152,38 @@ public class Machine {
 
     public void setDeleted(boolean deleted) {
         isDeleted = deleted;
+    }
+
+    public com.factoryos.modules.tenant.domain.Plant getPlant() {
+        return plant;
+    }
+
+    public void setPlant(com.factoryos.modules.tenant.domain.Plant plant) {
+        this.plant = plant;
+    }
+
+    public com.factoryos.modules.tenant.domain.ProductionArea getArea() {
+        return area;
+    }
+
+    public void setArea(com.factoryos.modules.tenant.domain.ProductionArea area) {
+        this.area = area;
+    }
+
+    public com.factoryos.modules.tenant.domain.ProductionLine getLine() {
+        return line;
+    }
+
+    public void setLine(com.factoryos.modules.tenant.domain.ProductionLine line) {
+        this.line = line;
+    }
+
+    public com.factoryos.modules.tenant.domain.WorkCell getWorkCell() {
+        return workCell;
+    }
+
+    public void setWorkCell(com.factoryos.modules.tenant.domain.WorkCell workCell) {
+        this.workCell = workCell;
     }
 
     public long getVersion() {

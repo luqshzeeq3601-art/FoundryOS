@@ -1,8 +1,10 @@
 package com.factoryos.modules.auth.infrastructure;
 
+import com.factoryos.modules.tenant.context.TenantContextFilter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -16,12 +18,10 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import org.springframework.http.HttpMethod;
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
-import static org.springframework.security.web.util.matcher.AntPathRequestMatcher.antMatcher;
-
 import java.util.Arrays;
 import java.util.List;
+
+import static org.springframework.security.web.util.matcher.AntPathRequestMatcher.antMatcher;
 
 @Configuration
 @EnableWebSecurity
@@ -29,15 +29,18 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final TenantContextFilter tenantContextFilter;
     private final RateLimitingFilter rateLimitingFilter;
     private final List<String> allowedOrigins;
 
     public SecurityConfig(
             JwtAuthenticationFilter jwtAuthenticationFilter,
+            TenantContextFilter tenantContextFilter,
             RateLimitingFilter rateLimitingFilter,
             @Value("${factoryos.cors.allowed-origins:http://localhost:5173,http://localhost:80,http://localhost}") String allowedOriginsStr
     ) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.tenantContextFilter = tenantContextFilter;
         this.rateLimitingFilter = rateLimitingFilter;
         this.allowedOrigins = Arrays.asList(allowedOriginsStr.split(","));
     }
@@ -66,10 +69,12 @@ public class SecurityConfig {
                         .requestMatchers(antMatcher("/api/v2/telemetry/**")).authenticated()
                         .requestMatchers(antMatcher("/api/v2/downtime/**")).authenticated()
                         .requestMatchers(antMatcher("/api/v2/barcode/**")).authenticated()
+                        .requestMatchers(antMatcher("/api/v2/hierarchy/**")).authenticated()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(tenantContextFilter, JwtAuthenticationFilter.class);
 
         return http.build();
     }
@@ -85,8 +90,8 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(allowedOrigins);
         configuration.setAllowedMethods(List.of("GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Request-ID", "X-CSRF-Token"));
-        configuration.setExposedHeaders(List.of("X-Request-ID", "Retry-After"));
+        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Request-ID", "X-CSRF-Token", "X-Plant-ID", "X-Plant-Code"));
+        configuration.setExposedHeaders(List.of("X-Request-ID", "Retry-After", "X-Plant-ID", "X-Plant-Code"));
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

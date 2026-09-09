@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { IndustrialBadge } from './IndustrialBadge';
 import { IndustrialButton } from './IndustrialButton';
+import { PlantSwitcher } from './PlantSwitcher';
 import { LogOut, Radio, User } from 'lucide-react';
 
 export const Header: React.FC = () => {
@@ -21,20 +22,23 @@ export const Header: React.FC = () => {
   return (
     <header className="border-b border-substrate-border bg-substrate-dark text-industrial-100 sticky top-0 z-40">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
-        {/* Brand */}
-        <div className="flex items-center gap-3">
-          <div className="w-7 h-7 bg-hazard-red flex items-center justify-center font-black text-black text-sm select-none">
-            F
-          </div>
-          <div className="flex flex-col">
-            <div className="flex items-center gap-2">
-              <span className="font-extrabold font-mono tracking-wider text-base text-white">
-                FACTORY<span className="text-hazard-red">//</span>OS
-              </span>
-              <span className="hidden sm:inline-block text-[10px] font-mono text-industrial-400 border border-substrate-border px-1">
-                PLANT-01
-              </span>
+        {/* Brand & Multi-Tenant Plant Switcher */}
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-7 h-7 bg-hazard-red flex items-center justify-center font-black text-black text-sm select-none">
+              F
             </div>
+            <div className="flex flex-col">
+              <div className="flex items-center gap-2">
+                <span className="font-extrabold font-mono tracking-wider text-base text-white">
+                  FACTORY<span className="text-hazard-red">//</span>OS
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="hidden sm:block border-l border-substrate-border pl-4">
+            <PlantSwitcher />
           </div>
         </div>
 

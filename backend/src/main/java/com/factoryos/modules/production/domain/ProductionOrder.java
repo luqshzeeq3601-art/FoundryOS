@@ -20,6 +20,10 @@ public class ProductionOrder {
     @JoinColumn(name = "machine_id", nullable = false)
     private Machine machine;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "plant_id")
+    private com.factoryos.modules.tenant.domain.Plant plant;
+
     @Column(name = "product_code", nullable = false, length = 100)
     private String productCode;
 
@@ -215,6 +219,14 @@ public class ProductionOrder {
 
     public void setDeleted(boolean deleted) {
         isDeleted = deleted;
+    }
+
+    public com.factoryos.modules.tenant.domain.Plant getPlant() {
+        return plant;
+    }
+
+    public void setPlant(com.factoryos.modules.tenant.domain.Plant plant) {
+        this.plant = plant;
     }
 
     public long getVersion() {

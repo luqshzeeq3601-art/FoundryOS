@@ -15,6 +15,9 @@ public class AuditEvent {
     @Column(name = "actor_id")
     private UUID actorId;
 
+    @Column(name = "plant_id")
+    private UUID plantId;
+
     @Column(nullable = false, length = 80)
     private String action;
 
@@ -62,6 +65,14 @@ public class AuditEvent {
 
     public void setActorId(UUID actorId) {
         this.actorId = actorId;
+    }
+
+    public UUID getPlantId() {
+        return plantId;
+    }
+
+    public void setPlantId(UUID plantId) {
+        this.plantId = plantId;
     }
 
     public String getAction() {

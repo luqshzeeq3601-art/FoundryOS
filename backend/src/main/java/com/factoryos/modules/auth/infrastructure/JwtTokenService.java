@@ -2,6 +2,7 @@ package com.factoryos.modules.auth.infrastructure;
 
 import com.factoryos.modules.auth.domain.User;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtBuilder;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
@@ -14,10 +15,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.Base64;
-import java.util.Date;
-import java.util.HexFormat;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 public class JwtTokenService {
@@ -35,15 +33,34 @@ public class JwtTokenService {
     }
 
     public String generateAccessToken(User user) {
+        return generateAccessToken(user, null, null, null, null);
+    }
+
+    public String generateAccessToken(User user, UUID activePlantId, String activePlantCode, String plantRole, List<String> authorizedPlantCodes) {
         Instant now = Instant.now();
         Instant expiry = now.plus(expirationMinutes, ChronoUnit.MINUTES);
 
-        return Jwts.builder()
+        JwtBuilder builder = Jwts.builder()
                 .subject(user.getId().toString())
                 .claim("email", user.getEmail())
                 .claim("role", user.getRole().getName().name())
                 .claim("displayName", user.getDisplayName())
-                .claim("mustChangePassword", user.isMustChangePassword())
+                .claim("mustChangePassword", user.isMustChangePassword());
+
+        if (activePlantId != null) {
+            builder.claim("plantId", activePlantId.toString());
+        }
+        if (activePlantCode != null) {
+            builder.claim("plantCode", activePlantCode);
+        }
+        if (plantRole != null) {
+            builder.claim("plantRole", plantRole);
+        }
+        if (authorizedPlantCodes != null && !authorizedPlantCodes.isEmpty()) {
+            builder.claim("authorizedPlants", authorizedPlantCodes);
+        }
+
+        return builder
                 .id(UUID.randomUUID().toString())
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expiry))

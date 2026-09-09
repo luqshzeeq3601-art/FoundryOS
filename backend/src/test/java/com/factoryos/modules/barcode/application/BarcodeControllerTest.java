@@ -63,6 +63,9 @@ class BarcodeControllerTest {
     private RateLimitingFilter rateLimitingFilter;
 
     @MockBean
+    private com.factoryos.modules.tenant.context.TenantContextFilter tenantContextFilter;
+
+    @MockBean
     private JwtTokenService jwtTokenService;
 
     @MockBean
@@ -87,6 +90,14 @@ class BarcodeControllerTest {
             chain.doFilter(req, res);
             return null;
         }).when(rateLimitingFilter).doFilter(any(), any(), any());
+
+        doAnswer(invocation -> {
+            ServletRequest req = invocation.getArgument(0);
+            ServletResponse res = invocation.getArgument(1);
+            FilterChain chain = invocation.getArgument(2);
+            chain.doFilter(req, res);
+            return null;
+        }).when(tenantContextFilter).doFilter(any(), any(), any());
 
         Role role = new Role();
         role.setName(RoleType.OPERATOR);

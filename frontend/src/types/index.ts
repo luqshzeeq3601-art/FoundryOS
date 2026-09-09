@@ -491,4 +491,147 @@ export interface BarcodeScanLogDto {
   createdAt: string;
 }
 
+// Multi-Tenant Hierarchy Types (v2 Epic 5)
+export interface EnterpriseDto {
+  id: string;
+  code: string;
+  name: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PlantDto {
+  id: string;
+  enterpriseId?: string;
+  enterpriseName?: string;
+  code: string;
+  name: string;
+  timezone: string;
+  address?: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProductionAreaDto {
+  id: string;
+  plantId: string;
+  plantName?: string;
+  code: string;
+  name: string;
+  description?: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProductionLineDto {
+  id: string;
+  areaId: string;
+  areaName?: string;
+  code: string;
+  name: string;
+  description?: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WorkCellDto {
+  id: string;
+  lineId: string;
+  lineName?: string;
+  code: string;
+  name: string;
+  description?: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WorkCellNodeDto {
+  cellId: string;
+  cellCode: string;
+  cellName: string;
+  machines: MachineDto[];
+}
+
+export interface LineNodeDto {
+  lineId: string;
+  lineCode: string;
+  lineName: string;
+  workCells: WorkCellNodeDto[];
+}
+
+export interface AreaNodeDto {
+  areaId: string;
+  areaCode: string;
+  areaName: string;
+  lines: LineNodeDto[];
+}
+
+export interface HierarchyTreeDto {
+  plantId: string;
+  plantCode: string;
+  plantName: string;
+  timezone: string;
+  status: string;
+  areas: AreaNodeDto[];
+}
+
+export interface UserPlantMembershipDto {
+  id: string;
+  userId: string;
+  userEmail: string;
+  userDisplayName: string;
+  plantId: string;
+  plantCode: string;
+  plantName: string;
+  roleId?: string;
+  roleName?: string;
+  isDefault: boolean;
+  createdAt: string;
+}
+
+export interface SwitchPlantRequest {
+  plantId: string;
+}
+
+export interface CreatePlantRequest {
+  enterpriseId: string;
+  code: string;
+  name: string;
+  timezone: string;
+  address?: string;
+}
+
+export interface CreateAreaRequest {
+  plantId: string;
+  code: string;
+  name: string;
+  description?: string;
+}
+
+export interface CreateLineRequest {
+  areaId: string;
+  code: string;
+  name: string;
+  description?: string;
+}
+
+export interface CreateWorkCellRequest {
+  lineId: string;
+  code: string;
+  name: string;
+  description?: string;
+}
+
+export interface AssignPlantMembershipRequest {
+  userId: string;
+  plantId: string;
+  roleId?: string;
+  isDefault?: boolean;
+}
+
 

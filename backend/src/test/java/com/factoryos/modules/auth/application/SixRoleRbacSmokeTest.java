@@ -90,6 +90,9 @@ class SixRoleRbacSmokeTest {
     private RateLimitingFilter rateLimitingFilter;
 
     @MockBean
+    private com.factoryos.modules.tenant.context.TenantContextFilter tenantContextFilter;
+
+    @MockBean
     private JwtTokenService jwtTokenService;
 
     @MockBean
@@ -98,16 +101,28 @@ class SixRoleRbacSmokeTest {
     @org.junit.jupiter.api.BeforeEach
     void setUpFilters() throws Exception {
         org.mockito.Mockito.doAnswer(invocation -> {
+            jakarta.servlet.ServletRequest req = invocation.getArgument(0);
+            jakarta.servlet.ServletResponse res = invocation.getArgument(1);
             jakarta.servlet.FilterChain chain = invocation.getArgument(2);
-            chain.doFilter(invocation.getArgument(0), invocation.getArgument(1));
+            chain.doFilter(req, res);
+            return null;
+        }).when(jwtAuthenticationFilter).doFilter(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
+
+        org.mockito.Mockito.doAnswer(invocation -> {
+            jakarta.servlet.ServletRequest req = invocation.getArgument(0);
+            jakarta.servlet.ServletResponse res = invocation.getArgument(1);
+            jakarta.servlet.FilterChain chain = invocation.getArgument(2);
+            chain.doFilter(req, res);
             return null;
         }).when(rateLimitingFilter).doFilter(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
 
         org.mockito.Mockito.doAnswer(invocation -> {
+            jakarta.servlet.ServletRequest req = invocation.getArgument(0);
+            jakarta.servlet.ServletResponse res = invocation.getArgument(1);
             jakarta.servlet.FilterChain chain = invocation.getArgument(2);
-            chain.doFilter(invocation.getArgument(0), invocation.getArgument(1));
+            chain.doFilter(req, res);
             return null;
-        }).when(jwtAuthenticationFilter).doFilter(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
+        }).when(tenantContextFilter).doFilter(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
     }
 
     // -------------------------------------------------------------

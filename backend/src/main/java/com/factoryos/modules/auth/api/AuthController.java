@@ -8,6 +8,7 @@ import com.factoryos.modules.auth.dto.LoginRequest;
 import com.factoryos.modules.auth.dto.LoginResponse;
 import com.factoryos.modules.auth.dto.TokenRefreshResponse;
 import com.factoryos.modules.auth.dto.UserDto;
+import com.factoryos.modules.tenant.dto.SwitchPlantRequest;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -77,6 +78,15 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.ok(result.response(), "Token refreshed"));
     }
 
+    @PostMapping("/switch-plant")
+    public ResponseEntity<ApiResponse<LoginResponse>> switchPlant(
+            @AuthenticationPrincipal User currentUser,
+            @Valid @RequestBody SwitchPlantRequest request
+    ) {
+        LoginResponse response = authService.switchPlant(currentUser, request.plantId());
+        return ResponseEntity.ok(ApiResponse.ok(response, "Plant switched successfully"));
+    }
+
     @PostMapping("/logout")
     public ResponseEntity<ApiResponse<Void>> logout(
             HttpServletRequest request,
@@ -100,7 +110,7 @@ public class AuthController {
 
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<UserDto>> getCurrentUser(@AuthenticationPrincipal User currentUser) {
-        return ResponseEntity.ok(ApiResponse.ok(UserDto.from(currentUser), "Current user details"));
+        return ResponseEntity.ok(ApiResponse.ok(authService.getUserProfile(currentUser), "Current user details"));
     }
 
     @PostMapping("/change-password")

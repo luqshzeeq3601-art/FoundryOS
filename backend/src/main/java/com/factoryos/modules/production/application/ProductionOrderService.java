@@ -11,6 +11,7 @@ import com.factoryos.modules.production.domain.ProductionOrder;
 import com.factoryos.modules.production.domain.ProductionOrderStatus;
 import com.factoryos.modules.production.dto.*;
 import com.factoryos.modules.production.repository.ProductionOrderRepository;
+import com.factoryos.modules.tenant.context.TenantContextHolder;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -44,19 +45,33 @@ public class ProductionOrderService {
             String search,
             Pageable pageable
     ) {
-        Page<ProductionOrder> page = productionOrderRepository.searchOrders(machineId, status, search, pageable);
+        UUID plantId = TenantContextHolder.getCurrentPlantId();
+        Page<ProductionOrder> page;
+        if (plantId != null && !TenantContextHolder.isGlobalAdmin()) {
+            page = productionOrderRepository.searchOrdersWithPlant(plantId, machineId, status, search, pageable);
+        } else if (plantId != null) {
+            page = productionOrderRepository.searchOrdersWithPlant(plantId, machineId, status, search, pageable);
+        } else {
+            page = productionOrderRepository.searchOrders(machineId, status, search, pageable);
+        }
         return PagedResponse.from(page.map(ProductionOrderDto::from));
     }
 
     public ProductionOrderDto getProductionOrderById(UUID id) {
         ProductionOrder order = productionOrderRepository.findByIdAndIsDeletedFalse(id)
                 .orElseThrow(() -> AppException.notFound("Production order not found with ID: " + id));
+
+        validatePlantAccess(order);
+
         return ProductionOrderDto.from(order);
     }
 
     public Optional<ProductionOrderDto> getActiveOrderForMachine(UUID machineId) {
         return productionOrderRepository.findByMachineIdAndStatus(machineId, ProductionOrderStatus.IN_PROGRESS)
-                .map(ProductionOrderDto::from);
+                .map(order -> {
+                    validatePlantAccess(order);
+                    return ProductionOrderDto.from(order);
+                });
     }
 
     @Transactional
@@ -69,9 +84,17 @@ public class ProductionOrderService {
         Machine machine = machineRepository.findByIdAndIsDeletedFalse(request.getMachineId())
                 .orElseThrow(() -> AppException.notFound("Machine not found with ID: " + request.getMachineId()));
 
+        if (machine.getPlant() != null && !TenantContextHolder.isGlobalAdmin()) {
+            UUID currentPlantId = TenantContextHolder.getCurrentPlantId();
+            if (currentPlantId != null && !currentPlantId.equals(machine.getPlant().getId())) {
+                throw AppException.forbidden("Cross-tenant violation: Cannot create order on machine at plant " + machine.getPlant().getCode());
+            }
+        }
+
         ProductionOrder order = new ProductionOrder();
         order.setOrderNumber(orderNumber);
         order.setMachine(machine);
+        order.setPlant(machine.getPlant());
         order.setProductCode(request.getProductCode().trim());
         order.setProductDescription(request.getProductDescription() != null ? request.getProductDescription().trim() : null);
         order.setPlannedQuantity(request.getPlannedQuantity());
@@ -104,6 +127,8 @@ public class ProductionOrderService {
     public ProductionOrderDto updateProductionOrder(UUID id, UpdateProductionOrderRequest request, User actor) {
         ProductionOrder order = productionOrderRepository.findByIdAndIsDeletedFalse(id)
                 .orElseThrow(() -> AppException.notFound("Production order not found with ID: " + id));
+
+        validatePlantAccess(order);
 
         if (request.getExpectedVersion() == null || !request.getExpectedVersion().equals(order.getVersion())) {
             throw AppException.versionConflict("Production order modified by another transaction. Reload and retry.");
@@ -153,6 +178,8 @@ public class ProductionOrderService {
         ProductionOrder order = productionOrderRepository.findByIdAndIsDeletedFalse(id)
                 .orElseThrow(() -> AppException.notFound("Production order not found with ID: " + id));
 
+        validatePlantAccess(order);
+
         if (request.getExpectedVersion() == null || !request.getExpectedVersion().equals(order.getVersion())) {
             throw AppException.versionConflict("Production order progress updated by another operator. Reload and retry.");
         }
@@ -192,6 +219,8 @@ public class ProductionOrderService {
     public ProductionOrderDto transitionStatus(UUID id, TransitionOrderStatusRequest request, User actor) {
         ProductionOrder order = productionOrderRepository.findByIdAndIsDeletedFalse(id)
                 .orElseThrow(() -> AppException.notFound("Production order not found with ID: " + id));
+
+        validatePlantAccess(order);
 
         if (request.getExpectedVersion() == null || !request.getExpectedVersion().equals(order.getVersion())) {
             throw AppException.versionConflict("Production order status changed by another operator. Reload and retry.");
@@ -264,6 +293,15 @@ public class ProductionOrderService {
         );
 
         return ProductionOrderDto.from(saved);
+    }
+
+    private void validatePlantAccess(ProductionOrder order) {
+        if (order.getPlant() != null && !TenantContextHolder.isGlobalAdmin()) {
+            UUID currentPlantId = TenantContextHolder.getCurrentPlantId();
+            if (currentPlantId != null && !currentPlantId.equals(order.getPlant().getId())) {
+                throw AppException.forbidden("Cross-tenant access violation: Production order belongs to plant " + order.getPlant().getCode());
+            }
+        }
     }
 
     private void validateTransition(ProductionOrderStatus from, ProductionOrderStatus to) {

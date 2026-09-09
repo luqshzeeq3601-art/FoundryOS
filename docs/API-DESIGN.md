@@ -305,5 +305,37 @@ Introduced in Sprint 7 (Epic 8: Story E8-S1) to support industrial barcode scann
 - **Audit Logging:**
   - Every scan is logged in `barcode_scan_logs` with scan payload, format, detected entity, operator ID, machine ID, order ID, and execution latency.
 
+---
+
+## Version 2 Multi-Tenant Enterprise Hierarchy APIs (`/api/v2/hierarchy` & `/api/v1/auth/switch-plant`)
+
+Introduced in Sprint 8 (Epic 5: Story E5-S1) to support multi-site enterprise manufacturing organizations (`Enterprise -> Plant -> Production Area -> Production Line -> Work Cell -> Machine`) with strict PostgreSQL Row-Level Security (RLS) data isolation and plant-scoped authorization.
+
+| Method and path | Request | Success | Roles |
+|---|---|---:|---|
+| `GET /api/v2/hierarchy/enterprises` | None | 200 list of EnterpriseDto | Admin, Production Manager |
+| `GET /api/v2/hierarchy/enterprises/{id}` | None | 200 EnterpriseDto | Admin, Production Manager |
+| `GET /api/v2/hierarchy/plants` | None | 200 list of PlantDto | All Authenticated (Authorized sites only) |
+| `GET /api/v2/hierarchy/plants/{plantId}/tree` | None | 200 HierarchyTreeDto | All Authenticated (Authorized plant only) |
+| `POST /api/v2/hierarchy/plants` | `enterpriseId`, `code`, `name`, `timezone`, `address?` | 201 PlantDto | Admin |
+| `POST /api/v2/hierarchy/plants/{plantId}/areas` | `code`, `name`, `description?` | 201 ProductionAreaDto | Admin, Production Manager |
+| `POST /api/v2/hierarchy/areas/{areaId}/lines` | `code`, `name`, `description?` | 201 ProductionLineDto | Admin, Production Manager |
+| `POST /api/v2/hierarchy/lines/{lineId}/cells` | `code`, `name`, `description?` | 201 WorkCellDto | Admin, Production Manager |
+| `GET /api/v2/hierarchy/users/{userId}/memberships` | None | 200 list of UserPlantMembershipDto | Admin, Production Manager |
+| `POST /api/v2/hierarchy/memberships` | `userId`, `plantId`, `roleId?`, `isDefault?` | 201 UserPlantMembershipDto | Admin |
+| `POST /api/v1/auth/switch-plant` | `plantId` | 200 LoginResponse (new JWT & user) | All Authenticated (Must be member of plant) |
+
+### Security & Invariants
+- **Multi-Tenant Context Resolution:**
+  - Every API request provides the active plant context via `X-Plant-ID` header (or defaulted to user's assigned default plant).
+  - `TenantContextFilter` verifies that the authenticated user possesses an active `UserPlantMembership` for the requested `plant_id`.
+  - Global `ADMIN` users can access and switch between all plants in the enterprise.
+- **PostgreSQL Row-Level Security (RLS):**
+  - RLS policies on `machines`, `production_orders`, `downtime_events`, `material_lots`, `maintenance_work_orders`, `barcode_scan_logs`, and `audit_events` ensure zero data leakage between plants.
+- **Cross-Plant Operation Guards:**
+  - Direct ID queries across foreign plants are blocked at domain service layer with `403 Forbidden` (`FORBIDDEN_PLANT_ACCESS`).
+- **MDC Audit Logging:**
+  - `plant_id` is set in Logback/SLF4J MDC and stamped on every audit event JSON log.
+
 
 

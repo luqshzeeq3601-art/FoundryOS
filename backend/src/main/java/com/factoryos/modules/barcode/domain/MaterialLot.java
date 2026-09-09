@@ -16,6 +16,10 @@ public class MaterialLot {
     @Column(name = "lot_number", nullable = false, unique = true, length = 80)
     private String lotNumber;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "plant_id")
+    private com.factoryos.modules.tenant.domain.Plant plant;
+
     @Column(name = "material_code", nullable = false, length = 100)
     private String materialCode;
 
@@ -139,6 +143,14 @@ public class MaterialLot {
 
     public void setUpdatedAt(Instant updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public com.factoryos.modules.tenant.domain.Plant getPlant() {
+        return plant;
+    }
+
+    public void setPlant(com.factoryos.modules.tenant.domain.Plant plant) {
+        this.plant = plant;
     }
 
     public boolean isExpired() {

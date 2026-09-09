@@ -2,6 +2,7 @@ package com.factoryos.modules.audit.application;
 
 import com.factoryos.modules.audit.domain.AuditEvent;
 import com.factoryos.modules.audit.repository.AuditEventRepository;
+import com.factoryos.modules.tenant.context.TenantContextHolder;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,6 +34,7 @@ public class AuditRecordingService {
         try {
             AuditEvent event = new AuditEvent();
             event.setActorId(actorId);
+            event.setPlantId(TenantContextHolder.getCurrentPlantId());
             event.setAction(action);
             event.setEntityType(entityType);
             event.setEntityId(entityId);
@@ -49,7 +51,8 @@ public class AuditRecordingService {
             }
 
             auditEventRepository.save(event);
-            log.info("Audit recorded: action={}, entityType={}, entityId={}, actorId={}", action, entityType, entityId, actorId);
+            log.info("Audit recorded: action={}, entityType={}, entityId={}, actorId={}, plantId={}",
+                    action, entityType, entityId, actorId, event.getPlantId());
         } catch (Exception e) {
             log.error("Failed to persist audit event for action={}, entityId={}", action, entityId, e);
             throw new RuntimeException("Audit event persistence failure triggered transaction rollback", e);

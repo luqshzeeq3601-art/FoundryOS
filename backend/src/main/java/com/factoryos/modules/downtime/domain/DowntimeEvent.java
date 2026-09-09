@@ -18,6 +18,10 @@ public class DowntimeEvent {
     @JoinColumn(name = "machine_id", nullable = false)
     private Machine machine;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "plant_id")
+    private com.factoryos.modules.tenant.domain.Plant plant;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "reason_code", nullable = false, length = 32)
     private DowntimeReasonCode reasonCode;
@@ -207,6 +211,14 @@ public class DowntimeEvent {
 
     public void setDeleted(boolean deleted) {
         isDeleted = deleted;
+    }
+
+    public com.factoryos.modules.tenant.domain.Plant getPlant() {
+        return plant;
+    }
+
+    public void setPlant(com.factoryos.modules.tenant.domain.Plant plant) {
+        this.plant = plant;
     }
 
     public long getVersion() {
