@@ -20,11 +20,17 @@ public interface ProductionOrderRepository extends JpaRepository<ProductionOrder
 
     Optional<ProductionOrder> findByIdAndIsDeletedFalse(UUID id);
 
+    Optional<ProductionOrder> findByOrderNumberAndIsDeletedFalse(String orderNumber);
+
+    Optional<ProductionOrder> findByOrderNumber(String orderNumber);
+
     boolean existsByOrderNumberAndIsDeletedFalse(String orderNumber);
 
     Optional<ProductionOrder> findByMachineAndStatus(Machine machine, ProductionOrderStatus status);
 
     Optional<ProductionOrder> findByMachineIdAndStatus(UUID machineId, ProductionOrderStatus status);
+
+    List<ProductionOrder> findByMachineIdAndStatusAndIsDeletedFalse(UUID machineId, ProductionOrderStatus status);
 
     @Query("SELECT p FROM ProductionOrder p WHERE p.isDeleted = false " +
            "AND (:machineId IS NULL OR p.machine.id = :machineId) " +

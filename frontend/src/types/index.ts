@@ -432,4 +432,63 @@ export interface RetentionReport {
   executedAt: string;
 }
 
+// Barcode Scanning & Traceability Types (v2 Epic 8)
+export type BarcodeType = 'TRAVELER' | 'MATERIAL_LOT' | 'MACHINE_ASSET' | 'OPERATOR_BADGE' | 'UNKNOWN';
+
+export type BarcodeValidationStatus = 'VALID' | 'INVALID_BOM' | 'NOT_FOUND' | 'EXPIRED' | 'QUARANTINED' | 'UNAUTHORIZED' | 'ERROR';
+
+export type ResolvedEntityType = 'PRODUCTION_ORDER' | 'MATERIAL_LOT' | 'MACHINE' | 'USER' | 'NONE';
+
+export interface BarcodeScanRequest {
+  rawPayload: string;
+  barcodeFormat?: string;
+  scannerSource?: 'HARDWARE_WEDGE' | 'CAMERA_ZXING' | 'MANUAL_KEYPAD';
+  machineId?: string;
+  productionOrderId?: string;
+}
+
+export interface BarcodeScanResponse {
+  scanLogId?: string;
+  rawPayload: string;
+  barcodeType: BarcodeType;
+  validationStatus: BarcodeValidationStatus;
+  resolvedEntityType: ResolvedEntityType;
+  resolvedEntityId?: string;
+  resolvedEntitySummary?: string;
+  bomMatched: boolean;
+  message: string;
+  executionLatencyMs: number;
+  timestamp: string;
+  entityData?: any;
+}
+
+export interface BomItemDto {
+  id: string;
+  productCode: string;
+  materialCode: string;
+  materialName: string;
+  requiredQuantityPerUnit: number;
+  uom: string;
+}
+
+export interface BarcodeScanLogDto {
+  id: string;
+  scanPayload: string;
+  barcodeFormat: string;
+  barcodeType: BarcodeType;
+  scannerSource: string;
+  resolvedEntityType: ResolvedEntityType;
+  resolvedEntityId?: string;
+  resolvedEntitySummary?: string;
+  machineId?: string;
+  productionOrderId?: string;
+  validationStatus: BarcodeValidationStatus;
+  bomMatched: boolean;
+  errorMessage?: string;
+  scannedByUserId?: string;
+  scannedByName?: string;
+  latencyMs: number;
+  createdAt: string;
+}
+
 

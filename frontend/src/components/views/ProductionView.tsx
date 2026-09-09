@@ -13,8 +13,9 @@ import {
 import { IndustrialButton } from '../common/IndustrialButton';
 import { IndustrialBadge } from '../common/IndustrialBadge';
 import { Modal } from '../common/Modal';
+import { BarcodeScannerModal } from '../common/BarcodeScannerModal';
 import { useAuth } from '../../context/AuthContext';
-import { ClipboardList, Plus, Search, Play, CheckCircle2, XCircle, ArrowRight, Layers } from 'lucide-react';
+import { ClipboardList, Plus, Search, Play, CheckCircle2, XCircle, ArrowRight, Layers, Scan } from 'lucide-react';
 
 export const ProductionView: React.FC = () => {
   const { hasRole } = useAuth();
@@ -27,6 +28,8 @@ export const ProductionView: React.FC = () => {
 
   // Modals
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [selectedOrderForScan, setSelectedOrderForScan] = useState<ProductionOrderDto | null>(null);
   const [progressOrder, setProgressOrder] = useState<ProductionOrderDto | null>(null);
   const [transitionOrder, setTransitionOrder] = useState<ProductionOrderDto | null>(null);
   const [targetStatus, setTargetStatus] = useState<ProductionOrderStatus>('RELEASED');
@@ -204,19 +207,34 @@ export const ProductionView: React.FC = () => {
           </h1>
         </div>
 
-        {canManage && (
+        <div className="flex flex-wrap items-center gap-2">
           <IndustrialButton
-            variant="primary"
+            variant="outline"
             size="md"
             onClick={() => {
-              resetForm();
-              setIsCreateModalOpen(true);
+              setSelectedOrderForScan(null);
+              setIsScannerOpen(true);
             }}
+            className="border-cyan-500/60 text-cyan-400 hover:bg-cyan-950/40"
           >
-            <Plus size={16} className="mr-1" />
-            <span>CREATE PRODUCTION ORDER</span>
+            <Scan size={16} className="mr-1 text-cyan-400" />
+            <span>SCAN BARCODE / TRAVELER</span>
           </IndustrialButton>
-        )}
+
+          {canManage && (
+            <IndustrialButton
+              variant="primary"
+              size="md"
+              onClick={() => {
+                resetForm();
+                setIsCreateModalOpen(true);
+              }}
+            >
+              <Plus size={16} className="mr-1" />
+              <span>CREATE PRODUCTION ORDER</span>
+            </IndustrialButton>
+          )}
+        </div>
       </div>
 
       {/* Global Error Banner */}
@@ -400,6 +418,20 @@ export const ProductionView: React.FC = () => {
                               <CheckCircle2 size={12} className="mr-1" />
                               COMPLETE
                             </IndustrialButton>
+                          )}
+
+                          {/* Scan Material Lot for Active Orders */}
+                          {(ord.status === 'IN_PROGRESS' || ord.status === 'RELEASED') && (
+                            <button
+                              onClick={() => {
+                                setSelectedOrderForScan(ord);
+                                setIsScannerOpen(true);
+                              }}
+                              className="p-1.5 bg-industrial-900 border border-cyan-800 hover:border-cyan-400 text-cyan-400 hover:text-white"
+                              title="Scan Raw Material Lot for BOM Validation"
+                            >
+                              <Scan size={14} />
+                            </button>
                           )}
 
                           {ord.status !== 'COMPLETED' && ord.status !== 'CANCELLED' && canManage && (
@@ -700,6 +732,27 @@ export const ProductionView: React.FC = () => {
           </div>
         </form>
       </Modal>
+
+      {/* Barcode & Material Traceability Scanner Modal */}
+      <BarcodeScannerModal
+        isOpen={isScannerOpen}
+        onClose={() => {
+          setIsScannerOpen(false);
+          setSelectedOrderForScan(null);
+        }}
+        targetMachineId={selectedOrderForScan ? selectedOrderForScan.machineId : undefined}
+        targetProductionOrderId={selectedOrderForScan ? selectedOrderForScan.id : undefined}
+        title={
+          selectedOrderForScan
+            ? `VERIFY MATERIAL LOT (ORDER: ${selectedOrderForScan.orderNumber} // PRODUCT: ${selectedOrderForScan.productCode})`
+            : '2D BARCODE & MATERIAL TRACEABILITY SCANNER'
+        }
+        onScanSuccess={(res) => {
+          if (res.barcodeType === 'TRAVELER' && res.entityData?.orderNumber) {
+            setSearchTerm(res.entityData.orderNumber);
+          }
+        }}
+      />
     </div>
   );
 };

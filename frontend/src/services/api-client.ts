@@ -170,3 +170,16 @@ export const downtimeApi = {
     api.post<import('../types').AutomatedEvaluationResult>(`/api/v2/downtime/machines/${machineId}/evaluate`),
 };
 
+// Barcode & Traceability API (v2 Epic 8)
+export const barcodeApi = {
+  scan: (data: import('../types').BarcodeScanRequest) =>
+    api.post<import('../types').BarcodeScanResponse>('/api/v2/barcode/scan', data),
+
+  getLogs: () =>
+    api.get<import('../types').BarcodeScanLogDto[]>('/api/v2/barcode/logs'),
+
+  getBom: (productCode: string) =>
+    api.get<import('../types').BomItemDto[]>(`/api/v2/barcode/bom/${productCode}`),
+};
+
+

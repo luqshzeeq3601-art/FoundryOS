@@ -276,4 +276,34 @@ Introduced in Sprint 7 (Epic 4: Story E4-S3) to eliminate manual operator loggin
 - **Concurrency & Partial Unique Constraint:**
   - Guaranteed race-free execution via PostgreSQL partial index `uq_downtime_one_open_per_machine` on `(machine_id) WHERE end_time IS NULL`.
 
+---
+
+## Version 2 Barcode Scanning & Material Traceability APIs (`/api/v2/barcode`)
+
+Introduced in Sprint 7 (Epic 8: Story E8-S1) to support industrial barcode scanners (Zebra DataWedge, Honeywell, Keyence) and tablet cameras for order traveler tracking and raw material BOM verification.
+
+| Method and path | Request | Success | Roles |
+|---|---|---:|---|
+| `POST /api/v2/barcode/scan` | `rawPayload`, `barcodeFormat?`, `scannerSource?`, `machineId?`, `productionOrderId?` | 200 BarcodeScanResponse | Operator, Technician, Engineer, Production Manager, Admin |
+| `GET /api/v2/barcode/logs` | None | 200 list of BarcodeScanLogDto | All Authenticated |
+| `GET /api/v2/barcode/bom/{productCode}` | None | 200 list of BomItemDto | All Authenticated |
+
+### Rules & Invariants
+- **Payload Classification:**
+  - `ORD:` or `TRAVELER:` or `ORD-XXXX` or `PO-XXXX`: Resolves production order traveler, verifies planned vs completed quantities, machine assignment, and active status.
+  - `LOT:` or `RAW:` or `MAT:` or `LOT-XXXX`: Resolves material lot inventory record.
+  - `MACH:` or `SN:` or machine serial numbers: Resolves machine asset context.
+  - `OPR:` or `BADGE:` or user email/badge: Resolves operator employee credentials.
+- **Bill of Materials (BOM) Cross-Validation:**
+  - When scanning a material lot against an active order / machine, the system verifies that `material_code` exists in the recipe `bill_of_materials` for that product.
+  - Mismatched materials return `status = INVALID_BOM` with clear rejection messaging to prevent loading incorrect raw stock into machines.
+- **Material Expiry & Quarantine Gates:**
+  - Expired lots return `status = EXPIRED` and are prohibited from machine loading.
+  - Quarantined lots return `status = QUARANTINED` requiring quality inspector sign-off.
+- **Latency SLA:**
+  - Response latency $< 300$ms guaranteed (benchmarked $< 50$ms average in `BarcodeScanningPerformanceTest`).
+- **Audit Logging:**
+  - Every scan is logged in `barcode_scan_logs` with scan payload, format, detected entity, operator ID, machine ID, order ID, and execution latency.
+
+
 

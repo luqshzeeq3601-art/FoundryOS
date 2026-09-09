@@ -18,6 +18,10 @@ public interface MachineRepository extends JpaRepository<Machine, UUID> {
 
     Optional<Machine> findByIdAndIsDeletedFalse(UUID id);
 
+    Optional<Machine> findBySerialNumberIgnoreCaseAndIsDeletedFalse(String serialNumber);
+
+    Optional<Machine> findByNameIgnoreCaseAndIsDeletedFalse(String name);
+
     boolean existsBySerialNumberAndIsDeletedFalse(String serialNumber);
 
     long countByStatusAndIsDeletedFalse(MachineStatus status);
