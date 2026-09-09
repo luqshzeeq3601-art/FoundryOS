@@ -290,3 +290,72 @@ export interface PagedResponse<T> {
   totalPages: number;
   last: boolean;
 }
+
+// ==========================================
+// Telemetry & IIoT Protocol Types (Sprint 6)
+// ==========================================
+
+export type ProtocolType = 'OPC_UA' | 'MQTT_SPARKPLUG_B' | 'MODBUS_TCP';
+export type TelemetryQuality = 'GOOD' | 'BAD' | 'UNCERTAIN';
+
+export interface TagMapping {
+  id: string;
+  machineId: string;
+  machineName?: string;
+  tagName: string;
+  protocol: ProtocolType;
+  tagAddress: string;
+  dataType: string;
+  unitOfMeasure?: string;
+  scaleFactor: number;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface CreateTagMappingRequest {
+  tagName: string;
+  protocol: ProtocolType;
+  tagAddress: string;
+  dataType?: string;
+  unitOfMeasure?: string;
+  scaleFactor?: number;
+}
+
+export interface MachineLiveTelemetry {
+  machineId: string;
+  machineName: string;
+  serialNumber: string;
+  machineStatus: MachineStatus;
+  spindleSpeedRpm: number;
+  vibrationMmPerSec: number;
+  motorCurrentAmps: number;
+  bearingTempCelsius: number;
+  healthScore: number;
+  activeProtocol: ProtocolType;
+  connectionStatus: 'ONLINE' | 'WARNING' | 'CRITICAL' | 'OFFLINE';
+  lastHeartbeat: string | null;
+  configuredTagsCount: number;
+}
+
+export interface TelemetryPoint {
+  tagName: string;
+  value: number;
+  unit?: string;
+  quality?: TelemetryQuality;
+  timestamp?: string;
+}
+
+export interface TelemetryBatchIngestRequest {
+  machineId: string;
+  gatewayId?: string;
+  points: TelemetryPoint[];
+}
+
+export interface TelemetryIngestResponse {
+  machineId: string;
+  ingestedCount: number;
+  status: string;
+  timestamp: string;
+  alerts: string[];
+}
+

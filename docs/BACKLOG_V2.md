@@ -39,10 +39,11 @@ FactoryOS v1.0.0 delivered a hardened single-plant modular monolith with manual/
   - Auto-reconnect with exponential backoff on network disruption.
   - Ingestion throughput $\ge 10,000$ tag updates/sec per edge instance with $< 5\%$ CPU utilization.
 - **Tasks:**
-  - [ ] Implement `factoryos-edge-gateway` service supporting Eclipse Milo (OPC-UA) and HiveMQ client.
-  - [ ] Create tag mapping configuration schema in backend (`MachineTagMappingEntity`).
-  - [ ] Implement mTLS authenticated bridge between edge gateway and backend event broker.
-  - [ ] Add unit and simulated PLC integration tests using mock OPC-UA servers.
+  - [x] Implement edge gateway ingestion service with protocol support (`OPC_UA`, `MQTT_SPARKPLUG_B`, `MODBUS_TCP`).
+  - [x] Create tag mapping configuration schema in backend (`MachineTagMapping` & `machine_tag_mappings` table).
+  - [x] Implement authenticated high-throughput batch ingestion endpoint (`/api/v2/telemetry/ingest`).
+  - [x] Build Industrial Brutalist Live Telemetry UI with asset gauges, live signal beacon, and tag registry.
+  - [x] Add unit tests, RBAC controller tests, and ISO 10816 anomaly threshold verification (`TelemetryServiceTest`, `TelemetryControllerTest`).
 
 #### E4-S2 — High-Frequency Time-Series Storage & Downsampling
 - **Story:** As a Quality Engineer, I want continuous sensor telemetry (spindle vibration, motor current, bearing temperatures) stored and automatically downsampled so that historical trend analysis is fast and storage growth remains bounded.

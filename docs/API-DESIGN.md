@@ -213,3 +213,27 @@ wrapper, permission, validation rule, and representative `400`, `401`, `403`,
 `version` checks. Operations that coordinate machine state lock the machine
 row before the associated record (after eligibility user locks when required), and insert business audit records in
 the same transaction.
+
+---
+
+## Version 2 Telemetry & IIoT Protocol APIs (`/api/v2/telemetry`)
+
+Introduced in Sprint 6 (Epic 4: Story E4-S1) to support automated machine telemetry ingestion from edge gateways and PLC controllers (OPC-UA, MQTT Sparkplug B, Modbus TCP).
+
+| Method and path | Request | Success | Roles |
+|---|---|---:|---|
+| `POST /api/v2/telemetry/machines/{id}/tags` | `tagName`, `protocol`, `tagAddress`, `dataType?`, `unitOfMeasure?`, `scaleFactor?` | 201 TagMapping | Admin, Engineer |
+| `GET /api/v2/telemetry/machines/{id}/tags` | None | 200 list | All Authenticated |
+| `DELETE /api/v2/telemetry/machines/{id}/tags/{mappingId}` | None | 200 void | Admin |
+| `POST /api/v2/telemetry/ingest` | `machineId`, `gatewayId?`, `points: [{tagName, value, unit?, quality?, timestamp?}]` | 200 TelemetryIngestResponse | Admin, Engineer |
+| `GET /api/v2/telemetry/machines/{id}/live` | None | 200 MachineLiveTelemetry | All Authenticated |
+| `GET /api/v2/telemetry/machines/{id}/history` | `limit?` (default 50, max 200) | 200 list | All Authenticated |
+
+### Rules & Invariants
+- **Protocols Supported:** `OPC_UA`, `MQTT_SPARKPLUG_B`, `MODBUS_TCP`.
+- **Quality Indicators:** `GOOD`, `BAD`, `UNCERTAIN`.
+- **Tag Uniqueness:** Tag names are normalized uppercase and unique per machine.
+- **Scaling:** Ingested raw sensor register values are multiplied by the registered `scaleFactor`.
+- **Anomaly Detection:** ISO 10816 vibration thresholds ($> 4.5$ mm/s) and thermal thresholds ($> 80.0$ °C) trigger automatic warning alerts in the ingestion response.
+- **Timestamp Filtering:** Timestamps older than 7 days or more than 5 minutes in the future are clamped to server ingest time to maintain partition sanity.
+

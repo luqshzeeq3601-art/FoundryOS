@@ -7,10 +7,11 @@ import {
   ClipboardList, 
   Wrench, 
   ShieldCheck, 
-  Users 
+  Users,
+  Radio
 } from 'lucide-react';
 
-export type TabId = 'dashboard' | 'machines' | 'downtime' | 'production' | 'maintenance' | 'audit' | 'admin';
+export type TabId = 'dashboard' | 'machines' | 'telemetry' | 'downtime' | 'production' | 'maintenance' | 'audit' | 'admin';
 
 interface NavigationProps {
   activeTab: TabId;
@@ -23,6 +24,7 @@ export const Navigation: React.FC<NavigationProps> = ({ activeTab, onTabChange }
   const navItems: Array<{ id: TabId; label: string; icon: React.ReactNode; roles?: string[] }> = [
     { id: 'dashboard', label: 'DASHBOARD', icon: <LayoutDashboard size={16} /> },
     { id: 'machines', label: 'MACHINES', icon: <Cpu size={16} /> },
+    { id: 'telemetry', label: 'TELEMETRY // IIoT', icon: <Radio size={16} /> },
     { id: 'downtime', label: 'DOWNTIME', icon: <AlertTriangle size={16} /> },
     { id: 'production', label: 'PRODUCTION', icon: <ClipboardList size={16} /> },
     { id: 'maintenance', label: 'MAINTENANCE', icon: <Wrench size={16} /> },

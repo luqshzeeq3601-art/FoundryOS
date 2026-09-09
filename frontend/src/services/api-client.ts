@@ -122,3 +122,25 @@ export const api = {
     return response.data.data;
   },
 };
+
+// Telemetry & IIoT API (v2)
+export const telemetryApi = {
+  getLiveTelemetry: (machineId: string) => 
+    api.get<import('../types').MachineLiveTelemetry>(`/api/v2/telemetry/machines/${machineId}/live`),
+  
+  getTagMappings: (machineId: string) => 
+    api.get<import('../types').TagMapping[]>(`/api/v2/telemetry/machines/${machineId}/tags`),
+
+  createTagMapping: (machineId: string, data: import('../types').CreateTagMappingRequest) => 
+    api.post<import('../types').TagMapping>(`/api/v2/telemetry/machines/${machineId}/tags`, data),
+
+  deleteTagMapping: (machineId: string, mappingId: string) => 
+    api.delete<void>(`/api/v2/telemetry/machines/${machineId}/tags/${mappingId}`),
+
+  ingestBatch: (data: import('../types').TelemetryBatchIngestRequest) => 
+    api.post<import('../types').TelemetryIngestResponse>('/api/v2/telemetry/ingest', data),
+
+  getHistory: (machineId: string, limit = 50) => 
+    api.get<import('../types').TelemetryPoint[]>(`/api/v2/telemetry/machines/${machineId}/history`, { limit }),
+};
+

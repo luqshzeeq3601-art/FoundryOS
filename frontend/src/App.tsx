@@ -12,6 +12,7 @@ import { ProductionView } from './components/views/ProductionView';
 import { MaintenanceView } from './components/views/MaintenanceView';
 import { AdminUsersView } from './components/views/AdminUsersView';
 import { AuditLogView } from './components/views/AuditLogView';
+import { LiveTelemetryView } from './components/views/LiveTelemetryView';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -46,6 +47,8 @@ const MainLayout: React.FC = () => {
     switch (activeTab) {
       case 'machines':
         return <MachinesView />;
+      case 'telemetry':
+        return <LiveTelemetryView />;
       case 'downtime':
         return <DowntimeView />;
       case 'production':
