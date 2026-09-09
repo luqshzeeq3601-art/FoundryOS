@@ -249,4 +249,31 @@ Introduced in Sprint 6 (Epic 4: Story E4-S1) to support automated machine teleme
   - Default retention: 7 days for raw telemetry, 30 days for 1-minute rollups, 365 days for 1-hour rollups.
   - Automated pruning executed via `POST /api/v2/telemetry/retention/execute` without blocking incoming writes.
 
+---
+
+## Version 2 Automated Downtime & Micro-Stop Detection APIs (`/api/v2/downtime`)
+
+Introduced in Sprint 7 (Epic 4: Story E4-S3) to eliminate manual operator logging for transient stoppages and enforce real-time OEE root cause attribution.
+
+| Method and path | Request | Success | Roles |
+|---|---|---:|---|
+| `GET /api/v2/downtime/pending-root-causes` | None | 200 list | All Authenticated |
+| `POST /api/v2/downtime/events/{id}/acknowledge-root-cause` | `reasonCode`, `resolutionNote?` | 200 DowntimeEventDto | Operator, Technician, Engineer, Production Manager, Admin |
+| `GET /api/v2/downtime/machines/{id}/micro-stops` | Query: `from?`, `to?` (ISO-8601) | 200 MicroStopSummaryDto | All Authenticated |
+| `POST /api/v2/downtime/machines/{id}/evaluate` | None | 200 AutomatedEvaluationResultDto | Engineer, Production Manager, Admin |
+
+### Rules & Invariants
+- **Machine State Precondition:** Automated downtime transitions only evaluate when an asset has an active `ProductionOrder` in status `IN_PROGRESS`. Idle assets between shifts/orders are not flagged as unplanned downtime.
+- **5-Second Transition SLA:** Stoppage of part counter pulse / zero spindle speed while `IN_PROGRESS` transitions machine state to `DOWN` and opens an automated downtime event (`triggerSource: AUTOMATED_SENSOR`).
+- **Heartbeat Timeout Protection:** Inactivity beyond heartbeat threshold (e.g. 15s without telemetry) triggers `DOWN` with `triggerSource: HEARTBEAT_TIMEOUT`.
+- **Micro-Stop Auto-Resolution ($< 180$ seconds / 3 minutes):**
+  - When part pulses resume before 180 seconds, the event is automatically closed with `isMicroStop = true`, `reasonCode = MICRO_STOP`, `resolvedBy = null`, and machine restored to `RUNNING`.
+  - Line operators do not face nuisance popups for brief feeder jams or momentary pauses.
+- **Operator Root-Cause Gate ($\ge 180$ seconds):**
+  - Once stoppage duration reaches 180 seconds, `rootCausePromptedAt` is timestamped.
+  - An attention prompt appears across operator touchscreens requesting verified root-cause classification (`TOOLING_JAM`, `MATERIAL_SHORTAGE`, `BREAKDOWN`, `OPERATOR_PAUSE`, `UNPLANNED_MAINTENANCE`, `SETUP`, `OTHER`).
+  - Upon cycle resumption, the event is recorded with the operator's acknowledged reason code and audit trail.
+- **Concurrency & Partial Unique Constraint:**
+  - Guaranteed race-free execution via PostgreSQL partial index `uq_downtime_one_open_per_machine` on `(machine_id) WHERE end_time IS NULL`.
+
 

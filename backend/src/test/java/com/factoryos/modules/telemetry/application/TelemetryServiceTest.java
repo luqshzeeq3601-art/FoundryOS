@@ -3,6 +3,7 @@ package com.factoryos.modules.telemetry.application;
 import com.factoryos.common.exception.AppException;
 import com.factoryos.modules.audit.application.AuditRecordingService;
 import com.factoryos.modules.auth.domain.User;
+import com.factoryos.modules.downtime.application.AutomatedDowntimeDetectionService;
 import com.factoryos.modules.machine.domain.Machine;
 import com.factoryos.modules.machine.domain.MachineStatus;
 import com.factoryos.modules.machine.repository.MachineRepository;
@@ -47,6 +48,9 @@ class TelemetryServiceTest {
 
     @Mock
     private AuditRecordingService auditRecordingService;
+
+    @Mock
+    private AutomatedDowntimeDetectionService automatedDowntimeDetectionService;
 
     @InjectMocks
     private TelemetryIngestionService telemetryService;

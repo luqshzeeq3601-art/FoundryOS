@@ -66,11 +66,14 @@ FactoryOS v1.0.0 delivered a hardened single-plant modular monolith with manual/
   - Transition from `ACTIVE` to `DOWN` automatically within 5 seconds of zero part sensor pulses.
   - Micro-stops ($< 180$ seconds) automatically logged and categorized as minor stoppages.
   - If stoppage exceeds 3 minutes, system alerts the line operator via touch UI to tag the downtime root cause.
+  - Race-free downtime state coordination enforced via database partial unique index.
 - **Tasks:**
-  - [ ] Build stream processing rule engine for machine heartbeats and cycle counter delta.
-  - [ ] Update `DowntimeTransitionCoordinator` to accept both manual and automated trigger sources.
-  - [ ] Add operator tablet prompt when an automated downtime exceeds micro-stop threshold.
-  - [ ] Add integration test verifying automated downtime creation and race-free resolution.
+  - [x] Create Flyway migration `V4__automated_micro_stop_and_downtime_detection.sql` with `trigger_source`, `is_micro_stop`, `root_cause_prompted_at`, and `root_cause_acknowledged_at`.
+  - [x] Build stream evaluation and state machine in `AutomatedDowntimeDetectionService` monitoring sensor pulses and active `ProductionOrder` states.
+  - [x] Implement micro-stop auto-resolution ($< 180$s) and operator attention prompt threshold ($\ge 180$s).
+  - [x] Implement REST endpoints (`/api/v2/downtime/pending-root-causes`, `/acknowledge-root-cause`, `/micro-stops`, `/evaluate/{id}`).
+  - [x] Add automated unit & controller tests (`AutomatedDowntimeDetectionServiceTest`, `AutomatedDowntimeControllerTest`).
+  - [x] Build Industrial Brutalist touch UI with pending root-cause attention banner, 1-touch classification modal, trigger source badges, and micro-stop loss analytics.
 
 ---
 

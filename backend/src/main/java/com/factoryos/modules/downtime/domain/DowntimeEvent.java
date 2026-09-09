@@ -22,6 +22,19 @@ public class DowntimeEvent {
     @Column(name = "reason_code", nullable = false, length = 32)
     private DowntimeReasonCode reasonCode;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "trigger_source", nullable = false, length = 32)
+    private DowntimeTriggerSource triggerSource = DowntimeTriggerSource.MANUAL;
+
+    @Column(name = "is_micro_stop", nullable = false)
+    private boolean isMicroStop = false;
+
+    @Column(name = "root_cause_prompted_at")
+    private Instant rootCausePromptedAt;
+
+    @Column(name = "root_cause_acknowledged_at")
+    private Instant rootCauseAcknowledgedAt;
+
     @Column(length = 2000)
     private String description;
 
@@ -82,6 +95,38 @@ public class DowntimeEvent {
 
     public void setReasonCode(DowntimeReasonCode reasonCode) {
         this.reasonCode = reasonCode;
+    }
+
+    public DowntimeTriggerSource getTriggerSource() {
+        return triggerSource;
+    }
+
+    public void setTriggerSource(DowntimeTriggerSource triggerSource) {
+        this.triggerSource = triggerSource != null ? triggerSource : DowntimeTriggerSource.MANUAL;
+    }
+
+    public boolean isMicroStop() {
+        return isMicroStop;
+    }
+
+    public void setMicroStop(boolean microStop) {
+        isMicroStop = microStop;
+    }
+
+    public Instant getRootCausePromptedAt() {
+        return rootCausePromptedAt;
+    }
+
+    public void setRootCausePromptedAt(Instant rootCausePromptedAt) {
+        this.rootCausePromptedAt = rootCausePromptedAt;
+    }
+
+    public Instant getRootCauseAcknowledgedAt() {
+        return rootCauseAcknowledgedAt;
+    }
+
+    public void setRootCauseAcknowledgedAt(Instant rootCauseAcknowledgedAt) {
+        this.rootCauseAcknowledgedAt = rootCauseAcknowledgedAt;
     }
 
     public String getDescription() {

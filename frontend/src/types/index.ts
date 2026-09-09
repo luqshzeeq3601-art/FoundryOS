@@ -94,22 +94,65 @@ export interface UpdateMachineStatusRequest {
   expectedVersion: number;
 }
 
-export type DowntimeReasonCode = 'BREAKDOWN' | 'SETUP' | 'MATERIAL_SHORTAGE' | 'OTHER';
+export type DowntimeReasonCode = 
+  | 'BREAKDOWN' 
+  | 'SETUP' 
+  | 'MATERIAL_SHORTAGE' 
+  | 'MICRO_STOP' 
+  | 'TOOLING_JAM' 
+  | 'OPERATOR_PAUSE' 
+  | 'UNPLANNED_MAINTENANCE' 
+  | 'OTHER';
+
+export type DowntimeTriggerSource = 'MANUAL' | 'AUTOMATED_SENSOR' | 'HEARTBEAT_TIMEOUT';
 
 export interface DowntimeEventDto {
   id: string;
   machineId: string;
   machineName: string;
   reasonCode: DowntimeReasonCode;
+  triggerSource: DowntimeTriggerSource;
+  isMicroStop: boolean;
   description?: string;
   startTime: string;
   endTime?: string;
   resolutionNote?: string;
   resolvedBy?: string;
   resolverName?: string;
+  rootCausePromptedAt?: string;
+  rootCauseAcknowledgedAt?: string;
   createdAt: string;
   updatedAt: string;
   version: number;
+}
+
+export interface AcknowledgeRootCauseRequest {
+  reasonCode: DowntimeReasonCode;
+  resolutionNote?: string;
+}
+
+export interface MicroStopSummary {
+  machineId: string;
+  machineName: string;
+  from: string;
+  to: string;
+  microStopCount: number;
+  totalMicroStopDurationSeconds: number;
+  majorDowntimeCount: number;
+  totalMajorDowntimeDurationSeconds: number;
+  microStopPercentage: number;
+}
+
+export interface AutomatedEvaluationResult {
+  machineId: string;
+  previousStatus: MachineStatus;
+  currentStatus: MachineStatus;
+  transitionOccurred: boolean;
+  downtimeEventId?: string;
+  isMicroStop: boolean;
+  rootCauseRequired: boolean;
+  message: string;
+  evaluatedAt: string;
 }
 
 export interface CreateDowntimeRequest {

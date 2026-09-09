@@ -155,3 +155,18 @@ export const telemetryApi = {
     api.post<import('../types').RetentionReport>('/api/v2/telemetry/retention/execute'),
 };
 
+// Downtime & Micro-Stop API (v2)
+export const downtimeApi = {
+  getPendingRootCauses: () =>
+    api.get<import('../types').DowntimeEventDto[]>('/api/v2/downtime/pending-root-causes'),
+
+  acknowledgeRootCause: (eventId: string, data: import('../types').AcknowledgeRootCauseRequest) =>
+    api.post<import('../types').DowntimeEventDto>(`/api/v2/downtime/events/${eventId}/acknowledge-root-cause`, data),
+
+  getMicroStopSummary: (machineId: string, params?: { from?: string; to?: string }) =>
+    api.get<import('../types').MicroStopSummary>(`/api/v2/downtime/machines/${machineId}/micro-stops`, params),
+
+  evaluateStream: (machineId: string) =>
+    api.post<import('../types').AutomatedEvaluationResult>(`/api/v2/downtime/machines/${machineId}/evaluate`),
+};
+

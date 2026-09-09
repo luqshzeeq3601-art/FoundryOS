@@ -4,5 +4,9 @@ public enum DowntimeReasonCode {
     BREAKDOWN,
     SETUP,
     MATERIAL_SHORTAGE,
-    OTHER
+    OTHER,
+    MICRO_STOP,
+    TOOLING_JAM,
+    OPERATOR_PAUSE,
+    UNPLANNED_MAINTENANCE
 }

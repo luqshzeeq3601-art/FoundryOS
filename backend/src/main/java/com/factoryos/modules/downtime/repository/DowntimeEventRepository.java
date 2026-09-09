@@ -41,4 +41,21 @@ public interface DowntimeEventRepository extends JpaRepository<DowntimeEvent, UU
             @Param("rangeFrom") Instant rangeFrom,
             @Param("rangeTo") Instant rangeTo
     );
+
+    @Query("SELECT d FROM DowntimeEvent d WHERE d.isDeleted = false " +
+           "AND d.endTime IS NULL " +
+           "AND d.rootCausePromptedAt IS NOT NULL " +
+           "AND d.rootCauseAcknowledgedAt IS NULL " +
+           "ORDER BY d.rootCausePromptedAt ASC")
+    List<DowntimeEvent> findPendingRootCauses();
+
+    @Query("SELECT d FROM DowntimeEvent d WHERE d.isDeleted = false " +
+           "AND (:machineId IS NULL OR d.machine.id = :machineId) " +
+           "AND (cast(:fromTime as timestamp) IS NULL OR d.startTime >= :fromTime) " +
+           "AND (cast(:toTime as timestamp) IS NULL OR d.startTime < :toTime)")
+    List<DowntimeEvent> findEventsInInterval(
+            @Param("machineId") UUID machineId,
+            @Param("fromTime") Instant fromTime,
+            @Param("toTime") Instant toTime
+    );
 }

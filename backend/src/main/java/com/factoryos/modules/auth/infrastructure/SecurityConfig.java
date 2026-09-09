@@ -64,6 +64,7 @@ public class SecurityConfig {
                         .requestMatchers(antMatcher(HttpMethod.DELETE, "/api/v2/telemetry/machines/*/tags/*")).hasRole("ADMIN")
                         .requestMatchers(antMatcher(HttpMethod.POST, "/api/v2/telemetry/retention/**")).hasRole("ADMIN")
                         .requestMatchers(antMatcher("/api/v2/telemetry/**")).authenticated()
+                        .requestMatchers(antMatcher("/api/v2/downtime/**")).authenticated()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(rateLimitingFilter, UsernamePasswordAuthenticationFilter.class)

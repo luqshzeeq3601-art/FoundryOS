@@ -3,6 +3,8 @@ package com.factoryos.modules.telemetry.application;
 import com.factoryos.common.exception.AppException;
 import com.factoryos.modules.audit.application.AuditRecordingService;
 import com.factoryos.modules.auth.domain.User;
+import com.factoryos.modules.downtime.application.AutomatedDowntimeDetectionService;
+import com.factoryos.modules.downtime.dto.AutomatedEvaluationResultDto;
 import com.factoryos.modules.machine.domain.Machine;
 import com.factoryos.modules.machine.repository.MachineRepository;
 import com.factoryos.modules.telemetry.domain.MachineTagMapping;
@@ -29,17 +31,20 @@ public class TelemetryIngestionService {
     private final MachineTagMappingRepository tagMappingRepository;
     private final MachineTelemetryRepository telemetryRepository;
     private final AuditRecordingService auditRecordingService;
+    private final AutomatedDowntimeDetectionService automatedDowntimeDetectionService;
 
     public TelemetryIngestionService(
             MachineRepository machineRepository,
             MachineTagMappingRepository tagMappingRepository,
             MachineTelemetryRepository telemetryRepository,
-            AuditRecordingService auditRecordingService
+            AuditRecordingService auditRecordingService,
+            AutomatedDowntimeDetectionService automatedDowntimeDetectionService
     ) {
         this.machineRepository = machineRepository;
         this.tagMappingRepository = tagMappingRepository;
         this.telemetryRepository = telemetryRepository;
         this.auditRecordingService = auditRecordingService;
+        this.automatedDowntimeDetectionService = automatedDowntimeDetectionService;
     }
 
     @Transactional
@@ -123,6 +128,9 @@ public class TelemetryIngestionService {
         List<String> alerts = new ArrayList<>();
         Instant now = Instant.now();
 
+        double detectedSpeed = -1.0;
+        double detectedCycleDelta = -1.0;
+
         for (TelemetryPointDto pt : request.getPoints()) {
             String tagName = pt.getTagName().trim().toUpperCase();
             double rawVal = pt.getValue();
@@ -149,6 +157,14 @@ public class TelemetryIngestionService {
                 alerts.add("Overcurrent Warning on " + machine.getName() + ": " + String.format("%.1f", scaledVal) + " A exceeds rating (45.0 A)");
             }
 
+            // Extract spindle speed or cycle delta for automated downtime evaluation
+            if (tagName.contains("SPEED") || tagName.contains("RPM")) {
+                detectedSpeed = scaledVal;
+            }
+            if (tagName.contains("CYCLE") || tagName.contains("PART") || tagName.contains("COUNT")) {
+                detectedCycleDelta = scaledVal;
+            }
+
             Instant ptTimestamp = pt.getTimestamp() != null ? pt.getTimestamp() : now;
             // Reject timestamps older than 7 days or more than 5 minutes in the future
             if (ptTimestamp.isBefore(now.minus(Duration.ofDays(7))) || ptTimestamp.isAfter(now.plus(Duration.ofMinutes(5)))) {
@@ -167,6 +183,26 @@ public class TelemetryIngestionService {
         }
 
         telemetryRepository.saveAll(pointsToSave);
+
+        // Evaluate automated micro-stop & downtime state transitions
+        if (automatedDowntimeDetectionService != null && (detectedSpeed >= 0 || detectedCycleDelta >= 0)) {
+            AutomatedEvaluationResultDto eval = automatedDowntimeDetectionService.evaluateMachineStream(
+                    machineId,
+                    detectedSpeed >= 0 ? detectedSpeed : 0.0,
+                    detectedCycleDelta >= 0 ? detectedCycleDelta : 0.0,
+                    now
+            );
+
+            if (eval != null) {
+                if ("TRIGGERED_DOWN".equals(eval.getActionTaken())) {
+                    alerts.add("Automated Downtime Triggered: " + eval.getMessage());
+                } else if ("RESOLVED_MICRO_STOP".equals(eval.getActionTaken())) {
+                    alerts.add("Automated Micro-Stop Resolved: " + eval.getMessage());
+                } else if ("FLAGGED_OPERATOR_PROMPT".equals(eval.getActionTaken())) {
+                    alerts.add("Operator Prompt: " + eval.getMessage());
+                }
+            }
+        }
 
         return new TelemetryIngestResponse(
                 machineId,
@@ -190,65 +226,80 @@ public class TelemetryIngestionService {
         dto.setMachineStatus(machine.getStatus());
         dto.setConfiguredTagsCount(mappings.size());
 
-        ProtocolType activeProtocol = mappings.isEmpty() ? ProtocolType.OPC_UA : mappings.get(0).getProtocol();
-        dto.setActiveProtocol(activeProtocol);
-
-        // Fetch latest metrics
-        Optional<MachineTelemetryPoint> speedPt = telemetryRepository.findLatestByMachineIdAndTagName(machineId, "SPINDLE_SPEED");
-        Optional<MachineTelemetryPoint> vibPt = telemetryRepository.findLatestByMachineIdAndTagName(machineId, "VIBRATION_RMS");
-        Optional<MachineTelemetryPoint> curPt = telemetryRepository.findLatestByMachineIdAndTagName(machineId, "MOTOR_CURRENT");
-        Optional<MachineTelemetryPoint> tempPt = telemetryRepository.findLatestByMachineIdAndTagName(machineId, "BEARING_TEMP");
-
-        double speed = speedPt.map(MachineTelemetryPoint::getMetricValue).orElse(0.0);
-        double vib = vibPt.map(MachineTelemetryPoint::getMetricValue).orElse(0.0);
-        double current = curPt.map(MachineTelemetryPoint::getMetricValue).orElse(0.0);
-        double temp = tempPt.map(MachineTelemetryPoint::getMetricValue).orElse(24.0); // Ambient baseline
-
-        dto.setSpindleSpeedRpm(speed);
-        dto.setVibrationMmPerSec(vib);
-        dto.setMotorCurrentAmps(current);
-        dto.setBearingTempCelsius(temp);
-
-        // Determine heartbeat & connection status
-        Instant latestTime = speedPt.map(MachineTelemetryPoint::getTimestamp).orElse(
-                vibPt.map(MachineTelemetryPoint::getTimestamp).orElse(
-                        tempPt.map(MachineTelemetryPoint::getTimestamp).orElse(null)
-                )
-        );
-        dto.setLastHeartbeat(latestTime);
-
-        int health = 100;
-        if (vib > 4.5) health -= 35;
-        else if (vib > 2.8) health -= 15;
-
-        if (temp > 80.0) health -= 40;
-        else if (temp > 65.0) health -= 15;
-
-        if (current > 45.0) health -= 25;
-        health = Math.max(0, Math.min(100, health));
-        dto.setHealthScore(health);
-
-        if (latestTime == null || latestTime.isBefore(Instant.now().minus(Duration.ofMinutes(15)))) {
-            dto.setConnectionStatus("OFFLINE");
-        } else if (health < 50) {
-            dto.setConnectionStatus("CRITICAL");
-        } else if (health < 80) {
-            dto.setConnectionStatus("WARNING");
+        if (!mappings.isEmpty()) {
+            dto.setActiveProtocol(mappings.get(0).getProtocol());
         } else {
-            dto.setConnectionStatus("ONLINE");
+            dto.setActiveProtocol(ProtocolType.OPC_UA);
         }
 
+        Optional<MachineTelemetryPoint> speedOpt = telemetryRepository.findLatestByMachineIdAndTagName(machineId, "SPINDLE_SPEED");
+        Optional<MachineTelemetryPoint> vibOpt = telemetryRepository.findLatestByMachineIdAndTagName(machineId, "VIBRATION_RMS");
+        Optional<MachineTelemetryPoint> curOpt = telemetryRepository.findLatestByMachineIdAndTagName(machineId, "MOTOR_CURRENT");
+        Optional<MachineTelemetryPoint> tempOpt = telemetryRepository.findLatestByMachineIdAndTagName(machineId, "BEARING_TEMP");
+
+        Instant latestTimestamp = null;
+        if (speedOpt.isPresent()) {
+            dto.setSpindleSpeedRpm(speedOpt.get().getMetricValue());
+            latestTimestamp = speedOpt.get().getTimestamp();
+        }
+        if (vibOpt.isPresent()) {
+            dto.setVibrationMmPerSec(vibOpt.get().getMetricValue());
+            if (latestTimestamp == null || vibOpt.get().getTimestamp().isAfter(latestTimestamp)) {
+                latestTimestamp = vibOpt.get().getTimestamp();
+            }
+        }
+        if (curOpt.isPresent()) {
+            dto.setMotorCurrentAmps(curOpt.get().getMetricValue());
+            if (latestTimestamp == null || curOpt.get().getTimestamp().isAfter(latestTimestamp)) {
+                latestTimestamp = curOpt.get().getTimestamp();
+            }
+        }
+        if (tempOpt.isPresent()) {
+            dto.setBearingTempCelsius(tempOpt.get().getMetricValue());
+            if (latestTimestamp == null || tempOpt.get().getTimestamp().isAfter(latestTimestamp)) {
+                latestTimestamp = tempOpt.get().getTimestamp();
+            }
+        }
+
+        if (latestTimestamp == null) {
+            dto.setConnectionStatus("AWAITING_STREAM");
+            dto.setHealthScore(100);
+            return dto;
+        }
+
+        dto.setLastHeartbeat(latestTimestamp);
+
+        // Heartbeat is considered ONLINE if last point was received within 60 seconds
+        boolean isOnline = latestTimestamp.isAfter(Instant.now().minus(Duration.ofSeconds(60)));
+        dto.setConnectionStatus(isOnline ? "ONLINE" : "OFFLINE");
+
+        // Compute Composite Health Score (100 is optimal)
+        int health = 100;
+        if (vibOpt.isPresent()) {
+            double vib = dto.getVibrationMmPerSec();
+            if (vib > 4.5) health -= 40; // ISO 10816 Zone D
+            else if (vib > 2.8) health -= 20; // Zone C
+        }
+        if (tempOpt.isPresent()) {
+            double temp = dto.getBearingTempCelsius();
+            if (temp > 80.0) health -= 30;
+            else if (temp > 65.0) health -= 15;
+        }
+        if (curOpt.isPresent() && dto.getMotorCurrentAmps() > 45.0) {
+            health -= 25;
+        }
+        if (!isOnline) {
+            health -= 20;
+        }
+
+        dto.setHealthScore(Math.max(0, health));
         return dto;
     }
 
     @Transactional(readOnly = true)
     public List<TelemetryPointDto> getTelemetryHistory(UUID machineId, int limit) {
-        if (machineRepository.findByIdAndIsDeletedFalse(machineId).isEmpty()) {
-            throw AppException.notFound("Machine not found with ID: " + machineId);
-        }
-
-        int pageSize = Math.min(Math.max(limit, 1), 200);
-        return telemetryRepository.findByMachineIdOrderByTimestampDesc(machineId, PageRequest.of(0, pageSize))
+        int boundedLimit = Math.min(Math.max(limit, 1), 200);
+        return telemetryRepository.findByMachineIdOrderByTimestampDesc(machineId, PageRequest.of(0, boundedLimit))
                 .stream()
                 .map(pt -> new TelemetryPointDto(
                         pt.getTagName(),

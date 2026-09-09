@@ -2,7 +2,9 @@ package com.factoryos.modules.downtime.dto;
 
 import com.factoryos.modules.downtime.domain.DowntimeEvent;
 import com.factoryos.modules.downtime.domain.DowntimeReasonCode;
+import com.factoryos.modules.downtime.domain.DowntimeTriggerSource;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -11,9 +13,14 @@ public class DowntimeEventDto {
     private UUID machineId;
     private String machineName;
     private DowntimeReasonCode reasonCode;
+    private DowntimeTriggerSource triggerSource;
+    private boolean isMicroStop;
+    private Instant rootCausePromptedAt;
+    private Instant rootCauseAcknowledgedAt;
     private String description;
     private Instant startTime;
     private Instant endTime;
+    private Long durationSeconds;
     private String resolutionNote;
     private UUID resolvedBy;
     private String resolverName;
@@ -30,9 +37,20 @@ public class DowntimeEventDto {
         dto.setMachineId(event.getMachine().getId());
         dto.setMachineName(event.getMachine().getName());
         dto.setReasonCode(event.getReasonCode());
+        dto.setTriggerSource(event.getTriggerSource());
+        dto.setMicroStop(event.isMicroStop());
+        dto.setRootCausePromptedAt(event.getRootCausePromptedAt());
+        dto.setRootCauseAcknowledgedAt(event.getRootCauseAcknowledgedAt());
         dto.setDescription(event.getDescription());
         dto.setStartTime(event.getStartTime());
         dto.setEndTime(event.getEndTime());
+        
+        Instant start = event.getStartTime();
+        Instant end = event.getEndTime() != null ? event.getEndTime() : Instant.now();
+        if (start != null && end != null) {
+            dto.setDurationSeconds(Math.max(0, Duration.between(start, end).toSeconds()));
+        }
+
         dto.setResolutionNote(event.getResolutionNote());
         if (event.getResolvedBy() != null) {
             dto.setResolvedBy(event.getResolvedBy().getId());
@@ -76,6 +94,38 @@ public class DowntimeEventDto {
         this.reasonCode = reasonCode;
     }
 
+    public DowntimeTriggerSource getTriggerSource() {
+        return triggerSource;
+    }
+
+    public void setTriggerSource(DowntimeTriggerSource triggerSource) {
+        this.triggerSource = triggerSource;
+    }
+
+    public boolean isMicroStop() {
+        return isMicroStop;
+    }
+
+    public void setMicroStop(boolean microStop) {
+        isMicroStop = microStop;
+    }
+
+    public Instant getRootCausePromptedAt() {
+        return rootCausePromptedAt;
+    }
+
+    public void setRootCausePromptedAt(Instant rootCausePromptedAt) {
+        this.rootCausePromptedAt = rootCausePromptedAt;
+    }
+
+    public Instant getRootCauseAcknowledgedAt() {
+        return rootCauseAcknowledgedAt;
+    }
+
+    public void setRootCauseAcknowledgedAt(Instant rootCauseAcknowledgedAt) {
+        this.rootCauseAcknowledgedAt = rootCauseAcknowledgedAt;
+    }
+
     public String getDescription() {
         return description;
     }
@@ -98,6 +148,14 @@ public class DowntimeEventDto {
 
     public void setEndTime(Instant endTime) {
         this.endTime = endTime;
+    }
+
+    public Long getDurationSeconds() {
+        return durationSeconds;
+    }
+
+    public void setDurationSeconds(Long durationSeconds) {
+        this.durationSeconds = durationSeconds;
     }
 
     public String getResolutionNote() {
