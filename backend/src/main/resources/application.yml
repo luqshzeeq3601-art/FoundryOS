@@ -1,0 +1,64 @@
+server:
+  port: ${SERVER_PORT:8080}
+  shutdown: graceful
+
+spring:
+  application:
+    name: factoryos-backend
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:development}
+  
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/factoryos}
+    username: ${SPRING_DATASOURCE_USERNAME:factoryos_app}
+    password: ${SPRING_DATASOURCE_PASSWORD:factoryos_secret}
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 20000
+      idle-timeout: 300000
+      max-lifetime: 1200000
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: false
+        jdbc:
+          time_zone: UTC
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when_authorized
+      probes:
+        enabled: true
+
+factoryos:
+  timezone: ${FACTORYOS_TIMEZONE:Asia/Kuala_Lumpur}
+  jwt:
+    secret: ${JWT_DEV_SECRET:development_only_secret_key_must_be_at_least_256_bits_long_for_security_12345}
+    expiration-minutes: 10
+    refresh-expiration-days: 7
+  bootstrap:
+    enabled: ${FACTORYOS_BOOTSTRAP_ENABLED:true}
+    admin-email: ${FACTORYOS_BOOTSTRAP_ADMIN_EMAIL:admin@factoryos.local}
+    admin-password: ${FACTORYOS_BOOTSTRAP_ADMIN_PASSWORD:AdminBootstrap2026!Secure}
+    admin-name: "System Administrator"
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:80,http://localhost}
+
+logging:
+  pattern:
+    console: '{"time":"%d{yyyy-MM-dd''T''HH:mm:ss.SSSXXX}","level":"%p","service":"factoryos","traceId":"%X{traceId:-}","reqId":"%X{reqId:-}","user":"%X{userId:-}","logger":"%c{1}","msg":"%replace(%m){''\n'','' ''}"}%n'

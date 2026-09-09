@@ -1,0 +1,82 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: factoryos_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-factoryos}
+      POSTGRES_USER: ${POSTGRES_USER:-factoryos_app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-factoryos_secret}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-factoryos_app} -d ${POSTGRES_DB:-factoryos}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # One-shot migration service running Flyway before the main application starts
+  migration:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: migration
+    container_name: factoryos_migration
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-development}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-factoryos}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-factoryos_app}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-factoryos_secret}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: factoryos_backend
+    restart: unless-stopped
+    environment:
+      SERVER_PORT: ${SERVER_PORT:-8080}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-development}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-factoryos}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-factoryos_app}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-factoryos_secret}
+      FACTORYOS_TIMEZONE: ${FACTORYOS_TIMEZONE:-Asia/Kuala_Lumpur}
+      JWT_DEV_SECRET: ${JWT_DEV_SECRET:-development_only_secret_key_must_be_at_least_256_bits_long_for_security_12345}
+      FACTORYOS_BOOTSTRAP_ENABLED: ${FACTORYOS_BOOTSTRAP_ENABLED:-true}
+      FACTORYOS_BOOTSTRAP_ADMIN_EMAIL: ${FACTORYOS_BOOTSTRAP_ADMIN_EMAIL:-admin@factoryos.local}
+      FACTORYOS_BOOTSTRAP_ADMIN_PASSWORD: ${FACTORYOS_BOOTSTRAP_ADMIN_PASSWORD:-AdminBootstrap2026!Secure}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:80,http://localhost}
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      migration:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health | grep -q '\"status\":\"UP\"' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: factoryos_frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+    name: factoryos_postgres_data
