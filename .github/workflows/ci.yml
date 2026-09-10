@@ -1,4 +1,4 @@
-name: FactoryOS CI/CD Pipeline
+name: FoundryOS CI/CD Pipeline
 
 on:
   push:
@@ -59,10 +59,10 @@ jobs:
         with:
           context: ./backend
           push: false
-          tags: factoryos-backend:latest
+          tags: foundryos-backend:latest
       - name: Build Frontend Image
         uses: docker/build-push-action@v5
         with:
           context: ./frontend
           push: false
-          tags: factoryos-frontend:latest
+          tags: foundryos-frontend:latest

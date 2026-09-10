@@ -3,18 +3,18 @@ version: '3.8'
 services:
   postgres-staging:
     image: postgres:16-alpine
-    container_name: factoryos_postgres_staging
+    container_name: foundryos_postgres_staging
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-factoryos_staging}
-      POSTGRES_USER: ${POSTGRES_USER:-factoryos_staging_app}
+      POSTGRES_DB: ${POSTGRES_DB:-foundryos_staging}
+      POSTGRES_USER: ${POSTGRES_USER:-foundryos_staging_app}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-StagingSecret2026!SecureKey}
     ports:
       - "127.0.0.1:5433:5432"
     volumes:
       - postgres_staging_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-factoryos_staging_app} -d ${POSTGRES_DB:-factoryos_staging}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-foundryos_staging_app} -d ${POSTGRES_DB:-foundryos_staging}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -24,11 +24,11 @@ services:
       context: ./backend
       dockerfile: Dockerfile
       target: migration
-    container_name: factoryos_migration_staging
+    container_name: foundryos_migration_staging
     environment:
       SPRING_PROFILES_ACTIVE: staging
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-staging:5432/${POSTGRES_DB:-factoryos_staging}
-      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-factoryos_staging_app}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-staging:5432/${POSTGRES_DB:-foundryos_staging}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-foundryos_staging_app}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-StagingSecret2026!SecureKey}
     depends_on:
       postgres-staging:
@@ -39,20 +39,20 @@ services:
       context: ./backend
       dockerfile: Dockerfile
       target: runtime
-    container_name: factoryos_backend_staging
+    container_name: foundryos_backend_staging
     restart: unless-stopped
     environment:
       SERVER_PORT: 8080
       SPRING_PROFILES_ACTIVE: staging
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-staging:5432/${POSTGRES_DB:-factoryos_staging}
-      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-factoryos_staging_app}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-staging:5432/${POSTGRES_DB:-foundryos_staging}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-foundryos_staging_app}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-StagingSecret2026!SecureKey}
-      FACTORYOS_TIMEZONE: ${FACTORYOS_TIMEZONE:-Asia/Kuala_Lumpur}
-      JWT_SECRET: ${JWT_SECRET:-staging_strong_jwt_signing_key_secret_256bits_minimum_factoryos_staging_environment_token}
+      FACTORYOS_TIMEZONE: ${FOUNDRYOS_TIMEZONE:-${FACTORYOS_TIMEZONE:-Asia/Kuala_Lumpur}}
+      JWT_SECRET: ${JWT_SECRET:-staging_strong_jwt_signing_key_secret_256bits_minimum_foundryos_staging_environment_token}
       FACTORYOS_BOOTSTRAP_ENABLED: "true"
-      FACTORYOS_BOOTSTRAP_ADMIN_EMAIL: "admin@staging.factoryos.local"
+      FACTORYOS_BOOTSTRAP_ADMIN_EMAIL: "admin@staging.foundryos.local"
       FACTORYOS_BOOTSTRAP_ADMIN_PASSWORD: "StagingAdmin2026!SecureBootstrap"
-      CORS_ALLOWED_ORIGINS: "http://staging.factoryos.local,http://localhost:8081,http://localhost"
+      CORS_ALLOWED_ORIGINS: "http://staging.foundryos.local,http://localhost:8081,http://localhost"
     ports:
       - "127.0.0.1:8081:8080"
     depends_on:
@@ -68,7 +68,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: factoryos_frontend_staging
+    container_name: foundryos_frontend_staging
     restart: unless-stopped
     ports:
       - "8082:80"
@@ -78,4 +78,4 @@ services:
 
 volumes:
   postgres_staging_data:
-    name: factoryos_postgres_staging_data
+    name: foundryos_postgres_staging_data

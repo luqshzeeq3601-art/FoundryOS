@@ -31,7 +31,7 @@ export const Header: React.FC = () => {
             <div className="flex flex-col">
               <div className="flex items-center gap-2">
                 <span className="font-extrabold font-mono tracking-wider text-base text-white">
-                  FACTORY<span className="text-hazard-red">//</span>OS
+                  FOUNDRY<span className="text-hazard-red">//</span>OS
                 </span>
               </div>
             </div>

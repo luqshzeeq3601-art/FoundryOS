@@ -429,7 +429,7 @@ export const AdminUsersView: React.FC = () => {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="technician.lead@factoryos.local"
+              placeholder="technician.lead@foundryos.local"
               className="w-full bg-industrial-900 border border-substrate-border px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-industrial-400"
             />
           </div>

@@ -1186,7 +1186,7 @@ export const LiveTelemetryView: React.FC = () => {
       >
         <div className="space-y-4">
           <p className="text-xs font-mono text-industrial-300">
-            FactoryOS implements a multi-tier storage policy to guarantee sub-200ms query performance across 30+ day analytical windows.
+            FoundryOS implements a multi-tier storage policy to guarantee sub-200ms query performance across 30+ day analytical windows.
           </p>
 
           <div className="border border-substrate-border divide-y divide-substrate-border text-xs font-mono">

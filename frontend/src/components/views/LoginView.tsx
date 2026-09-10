@@ -5,7 +5,7 @@ import { ShieldAlert, KeyRound, Lock, Mail } from 'lucide-react';
 
 export const LoginView: React.FC = () => {
   const { login, user, changePassword } = useAuth();
-  const [email, setEmail] = useState('admin@factoryos.local');
+  const [email, setEmail] = useState('admin@foundryos.local');
   const [password, setPassword] = useState('AdminBootstrap2026!Secure');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -122,7 +122,7 @@ export const LoginView: React.FC = () => {
     <div className="min-h-screen bg-substrate-dark flex flex-col items-center justify-center p-4 relative">
       {/* Background Decorative Grid Markers */}
       <div className="absolute top-6 left-6 text-xs text-industrial-700 font-mono">
-        FACTORY//OS :: NODE-PLANT-01
+        FOUNDRY//OS :: NODE-PLANT-01
       </div>
       <div className="absolute bottom-6 right-6 text-xs text-industrial-700 font-mono">
         BUILD 2026.09 // LATENCY &lt; 20MS
@@ -139,7 +139,7 @@ export const LoginView: React.FC = () => {
           <div>
             <div className="text-xs font-mono text-industrial-500 uppercase tracking-widest">[ AUTH // TERMINAL ]</div>
             <h1 className="text-xl font-extrabold font-mono uppercase text-white tracking-wider">
-              FACTORY<span className="text-hazard-red">//</span>OS
+              FOUNDRY<span className="text-hazard-red">//</span>OS
             </h1>
           </div>
         </div>
@@ -166,7 +166,7 @@ export const LoginView: React.FC = () => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full bg-industrial-900 border border-substrate-border px-3 py-2.5 text-sm text-white font-mono focus:outline-none focus:border-industrial-400"
-              placeholder="operator@factoryos.local"
+              placeholder="operator@foundryos.local"
             />
           </div>
 

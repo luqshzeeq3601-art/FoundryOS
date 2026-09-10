@@ -436,8 +436,8 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
 
                   <button
                     onClick={() => {
-                      setManualCode('OPR:operator@factoryos.local');
-                      handleScanPayload('OPR:operator@factoryos.local', 'MANUAL_KEYPAD');
+                      setManualCode('OPR:operator@foundryos.local');
+                      handleScanPayload('OPR:operator@foundryos.local', 'MANUAL_KEYPAD');
                     }}
                     className="p-2 text-left bg-industrial-900 border border-purple-800/60 hover:border-purple-500 text-[11px] text-purple-300"
                   >

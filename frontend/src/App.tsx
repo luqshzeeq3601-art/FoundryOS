@@ -33,7 +33,7 @@ const MainLayout: React.FC = () => {
       <div className="min-h-screen bg-substrate-dark flex flex-col items-center justify-center p-4">
         <div className="flex items-center gap-3 text-white font-mono text-sm">
           <span className="inline-block w-4 h-4 border-2 border-hazard-red border-t-transparent animate-spin" />
-          <span>INITIALIZING FACTORY//OS TELEMETRY BUS...</span>
+          <span>INITIALIZING FOUNDRY//OS TELEMETRY BUS...</span>
         </div>
       </div>
     );
@@ -79,7 +79,7 @@ const MainLayout: React.FC = () => {
       </main>
 
       <footer className="border-t border-substrate-border bg-substrate-dark py-3 px-4 sm:px-6 text-[10px] font-mono text-industrial-500 flex flex-col sm:flex-row items-center justify-between gap-2">
-        <div>FACTORY//OS v1.0.0-PROD // DEPLOYMENT: SINGLE-PLANT OPERATING SYSTEM</div>
+        <div>FOUNDRY//OS v1.0.0-PROD // DEPLOYMENT: SINGLE-PLANT OPERATING SYSTEM</div>
         <div>ALL TRANSACTIONS LOGGED UNDER SHA-256 SECURED AUDIT BUS</div>
       </footer>
     </div>

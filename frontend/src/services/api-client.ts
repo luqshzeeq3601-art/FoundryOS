@@ -1,8 +1,8 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { ApiResponse } from '../types';
 
-let accessToken: string | null = localStorage.getItem('factoryos_access_token');
-let activePlantId: string | null = localStorage.getItem('factoryos_active_plant_id');
+let accessToken: string | null = localStorage.getItem('foundryos_access_token') || localStorage.getItem('factoryos_access_token');
+let activePlantId: string | null = localStorage.getItem('foundryos_active_plant_id') || localStorage.getItem('factoryos_active_plant_id');
 let isRefreshing = false;
 let failedQueue: Array<{
   resolve: (token: string) => void;
@@ -23,8 +23,9 @@ const processQueue = (error: unknown, token: string | null = null) => {
 export const setStoredAccessToken = (token: string | null) => {
   accessToken = token;
   if (token) {
-    localStorage.setItem('factoryos_access_token', token);
+    localStorage.setItem('foundryos_access_token', token);
   } else {
+    localStorage.removeItem('foundryos_access_token');
     localStorage.removeItem('factoryos_access_token');
   }
 };
@@ -34,8 +35,9 @@ export const getStoredAccessToken = () => accessToken;
 export const setStoredActivePlantId = (plantId: string | null) => {
   activePlantId = plantId;
   if (plantId) {
-    localStorage.setItem('factoryos_active_plant_id', plantId);
+    localStorage.setItem('foundryos_active_plant_id', plantId);
   } else {
+    localStorage.removeItem('foundryos_active_plant_id');
     localStorage.removeItem('factoryos_active_plant_id');
   }
 };
