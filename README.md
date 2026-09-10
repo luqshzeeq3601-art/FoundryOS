@@ -1,206 +1,129 @@
-<div align="center">
-
 # FoundryOS
 
-**Enterprise-Grade Manufacturing Execution & Operations Platform**
+[![CI](https://github.com/luqshzeeq3601-art/FoundryOS/actions/workflows/ci.yml/badge.svg)](https://github.com/luqshzeeq3601-art/FoundryOS/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-[![CI/CD Pipeline](https://github.com/luqshzeeq3601-art/FoundryOS/actions/workflows/ci.yml/badge.svg)](https://github.com/luqshzeeq3601-art/FoundryOS/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Java 21](https://img.shields.io/badge/Java-21-orange.svg?logo=openjdk)](https://openjdk.org/projects/jdk/21/)
-[![Spring Boot 3.3](https://img.shields.io/badge/Spring_Boot-3.3.2-6DB33F.svg?logo=springboot)](https://spring.io/projects/spring-boot)
-[![React 18](https://img.shields.io/badge/React-18.3-61DAFB.svg?logo=react)](https://reactjs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.5-3178C6.svg?logo=typescript)](https://www.typescriptlang.org/)
-[![PostgreSQL 16](https://img.shields.io/badge/PostgreSQL-16-4169E1.svg?logo=postgresql)](https://www.postgresql.org/)
-[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED.svg?logo=docker)](https://www.docker.com/)
+Manufacturing execution system for single-plant and multi-plant operations.
+Tracks machines, downtime, production batches, maintenance work orders, and OEE
+across the shop floor. Built as a Spring Boot modular monolith with a React
+frontend designed for factory-floor touchscreens.
 
-<p align="center">
-  A high-reliability, single-to-multi-plant manufacturing execution system (MES) engineered with a Spring Boot modular monolith backend, PostgreSQL transactional persistence with Flyway migrations, and an industrial brutalist React/TypeScript frontend client.
-</p>
+## Stack
 
-[Quickstart](#quickstart--local-execution) • [Key Features](#key-features) • [Architecture](#core-architecture) • [Documentation](#documentation--runbooks) • [Contributing](#contributing)
+| | |
+|---|---|
+| **Backend** | Java 21, Spring Boot 3.3, Spring Security (RS256 JWT), Flyway |
+| **Database** | PostgreSQL 16 |
+| **Frontend** | React 18, TypeScript, Vite, Tailwind CSS |
+| **Infra** | Docker Compose, Nginx, GitHub Actions CI |
 
-</div>
-
----
-
-## Overview
-
-**FoundryOS** bridges the gap between raw shop-floor activity and executive decision-making. Built for high-throughput discrete and batch manufacturing environments, it provides real-time machine telemetry, stoppage tracking, overall equipment effectiveness (OEE) metrics, maintenance work order dispatch, barcode asset scanning, and immutable audit logs.
-
-Designed with an **Industrial Brutalist UI** for high contrast and fast tactile feedback on factory floor touchscreens and rugged tablets.
-
----
-
-## Key Features
-
-- ⚙️ **Machine Fleet State Machine**: Strict lifecycle state transitions (`IDLE`, `RUNNING`, `DOWN`, `MAINTENANCE`, `OFFLINE`) with optimistic locking preventing race conditions.
-- ⏱️ **Downtime & Stoppage Tracking**: Granular categorization (Mechanical, Electrical, Operational, Material Shortage) with automated MTTR/MTBF calculations.
-- 📊 **Real-Time OEE Engine**: Live computation of Availability, Performance, and Quality indices across production lines and work centers.
-- 📦 **Production Batch Runs**: Job order scheduling, target vs actual count tracking, and real-time scrap rate monitoring.
-- 🛠️ **MRO Maintenance Work Orders**: Priority triage (`LOW`, `MEDIUM`, `HIGH`, `CRITICAL`), technician dispatch, and checklist sign-off workflows.
-- 🔒 **6-Role Granular RBAC**: Role-based access control (`SYSTEM_ADMIN`, `PLANT_MANAGER`, `PRODUCTION_SUPERVISOR`, `MAINTENANCE_ENGINEER`, `LINE_OPERATOR`, `AUDITOR`) powered by RS256 JWTs and opaque refresh tokens.
-- 📷 **Barcode & Asset Scanner**: Camera-based and hardware scanner integration for instant machine lookup, batch tracking, and work order assignment.
-- 📡 **Live Telemetry & IoT Ingestion**: Simulated & real IIoT sensor stream ingestion (RPM, temperature, vibration, power consumption).
-- 📜 **Append-Only Audit Bus**: Immutable event recording for compliance, safety incidents, shift handovers, and system configuration adjustments.
-- 🏢 **Multi-Plant Tenant Hierarchy**: Site -> Plant -> Line -> Work Center hierarchy ready for multi-facility enterprise scaling.
-
----
-
-## Tech Stack
-
-| Layer | Technology | Purpose |
-|---|---|---|
-| **Backend** | Spring Boot 3.3.2, Java 21 | Modular monolith API, domain events, validation |
-| **Database** | PostgreSQL 16, Flyway | Relational persistence, schema versioning, ACID guarantees |
-| **Security** | Spring Security 6, JJWT (RS256) | Role-based IAM, token revocation, stateless auth |
-| **Frontend** | React 18, TypeScript 5.5, Vite | Single-page application, type safety, sub-second HMR |
-| **Styling** | Tailwind CSS, Lucide Icons | Industrial brutalist high-contrast design system |
-| **Containerization** | Docker, Docker Compose, Nginx | Multi-stage production builds and local dev orchestration |
-| **CI/CD** | GitHub Actions | Automated linting, typechecking, Maven test suite, Docker packaging |
-
----
-
-## Quickstart & Local Execution
-
-### 1. Run with Docker Compose (Recommended)
-
-To spin up the full production stack (PostgreSQL, Flyway migrations, Spring Boot API, and Nginx frontend):
+## Quickstart
 
 ```bash
-# Clone the repository
 git clone https://github.com/luqshzeeq3601-art/FoundryOS.git
 cd FoundryOS
-
-# Create environment configuration
 cp .env.example .env
-
-# Launch the container stack
 docker compose up --build
 ```
 
-### Access URLs
 | Service | URL |
 |---|---|
-| **Frontend Application** | [http://localhost:3000](http://localhost:3000) (or port configured in `.env`) |
-| **Backend REST API** | [http://localhost:8080/api/v1](http://localhost:8080/api/v1) |
-| **Actuator Health & Metrics** | [http://localhost:8080/actuator/health](http://localhost:8080/actuator/health) |
+| Frontend | http://localhost:3000 |
+| API | http://localhost:8080/api/v1 |
+| Health check | http://localhost:8080/actuator/health |
 
-### Default Bootstrap Credentials
-- **Email:** `admin@foundryos.local`
-- **Password:** `AdminBootstrap2026!Secure`
-- *(The system enforces an immediate password rotation upon initial sign-in).*
+Default login: `admin@foundryos.local` / `AdminBootstrap2026!Secure`
+(password rotation enforced on first sign-in)
 
----
+## Local development
 
-## Development Setup
+Prerequisites: Node.js 20+, Java 21, PostgreSQL 16 (or `docker compose up -d postgres`)
 
-For independent frontend or backend development without running all containers:
-
-### Prerequisites
-- **Node.js**: v20+
-- **JDK**: Java 21
-- **PostgreSQL**: 16+ running locally on port 5432 (or run `docker compose up -d postgres`)
-
-### Backend Setup
 ```bash
+# Backend
 cd backend
+./mvnw clean test          # run tests
+./mvnw spring-boot:run     # start API on :8080
 
-# Run automated tests
-./mvnw clean test
-
-# Launch backend application
-./mvnw spring-boot:run
-```
-
-### Frontend Setup
-```bash
+# Frontend
 cd frontend
-
-# Install dependencies
 npm install
-
-# Typecheck and lint
-npm run typecheck
-npm run lint
-
-# Start Vite development server
-npm run dev
-```
-The frontend dev server will be available at `http://localhost:5173`.
-
----
-
-## Core Architecture
-
-```
-FoundryOS/
-├── backend/                      # Spring Boot 3.3.2 + Java 21 Modular Monolith
-│   ├── src/main/java/com/factoryos/
-│   │   ├── modules/auth/         # JWT RS256 + Refresh Tokens, IAM & RBAC
-│   │   ├── modules/machine/      # Fleet Registry & Status State Machine
-│   │   ├── modules/downtime/     # Stoppages, Reason Codes, Outage Duration
-│   │   ├── modules/production/   # Batch Orders, Good vs Scrap Counters
-│   │   ├── modules/maintenance/  # Work Orders, Priority, Technician Dispatch
-│   │   ├── modules/operations/   # Cross-domain Transaction Orchestrator
-│   │   ├── modules/reporting/    # Plant KPI Summaries & Real-time OEE
-│   │   ├── modules/telemetry/    # IIoT Sensor Metrics & Ingestion
-│   │   ├── modules/tenant/       # Multi-Plant & Line Hierarchy
-│   │   └── modules/audit/        # Transactional Append-Only Audit Bus
-│   └── src/test/                 # Automated Unit & Integration Test Suite
-├── frontend/                     # React 18 + TypeScript + Vite + Tailwind CSS
-│   ├── src/components/views/     # Dashboard, Machines, Downtime, Production, MRO, IAM, Telemetry
-│   ├── src/services/             # Axios API client with auto-refresh interceptors
-│   └── src/styles/               # Industrial Brutalist Design System
-├── docker-compose.yml            # Multi-container local & production orchestration
-└── docs/                         # Architecture specifications, PRD, and runbooks
+npm run dev                # Vite dev server on :5173
 ```
 
----
+## What it does
 
-## Documentation & Runbooks
+**Machine management** — State machine with lifecycle transitions (idle, running,
+down, maintenance, offline) and optimistic locking to prevent concurrent state
+conflicts.
 
-Comprehensive technical documentation is maintained in the [`docs/`](docs/) directory:
+**Downtime tracking** — Categorized stoppages (mechanical, electrical,
+operational, material shortage) with MTTR and MTBF calculations.
 
-| Document | Description |
-|---|---|
-| [RELEASE_NOTES_v1.0.0](docs/RELEASE_NOTES_v1.0.0.md) | FoundryOS v1.0.0 GA Release Notes, SLAs, and verification evidence |
-| [OPERATIONS_RUNBOOK](docs/OPERATIONS_RUNBOOK.md) | Backup/Restore (RPO &le; 15m, RTO &le; 30m), Disaster Recovery, 6-Role Smoke Test Matrix |
-| [PRD](docs/PRD.md) | Product Requirements Document, User Personas, Permissions, and Scope |
-| [Architecture Essentials](docs/ARCHITECTURE-ESSENTIALS.md) | High-level system architecture, module contracts, and invariants |
-| [Architecture Deep-Dive](docs/ARCHITECTURE.md) | Domain boundaries, transactional invariants, optimistic locking |
-| [CODEX](docs/CODEX.md) | Engineering standards, code conventions, CI/CD pipeline |
-| [Security](docs/Security.md) | Cryptography standards, authentication guards, audit retention |
-| [BACKLOG](docs/BACKLOG.md) | MVP Epics, user stories, acceptance criteria (v1.0.0 GA Completed) |
-| [BACKLOG_V2](docs/BACKLOG_V2.md) | FoundryOS 2.0 Roadmap: Multi-Plant, IIoT Telemetry, Predictive Maintenance |
+**OEE** — Real-time availability, performance, and quality metrics per line and
+work center.
 
----
+**Production** — Batch run tracking with target vs actual counts and scrap rate
+monitoring.
 
-## Roadmap
+**Maintenance** — Work orders with priority levels, technician assignment, and
+sign-off checklists.
 
-- [x] **v1.0.0 (GA)**: Single-plant core MES, 6-Role RBAC, Machine State Machine, Downtime Tracking, OEE Engine, Production Batching, Work Orders, Audit Bus.
-- [x] **v1.1.0**: Barcode & QR asset scanner, live sensor telemetry simulation, dark industrial brutalist UI upgrade.
-- [ ] **v2.0.0**: Multi-plant enterprise hierarchy, MQTT/OPC-UA IIoT broker connectivity, AI-driven predictive maintenance anomalies.
+**Access control** — Six roles (`SYSTEM_ADMIN`, `PLANT_MANAGER`,
+`PRODUCTION_SUPERVISOR`, `MAINTENANCE_ENGINEER`, `LINE_OPERATOR`, `AUDITOR`)
+with RS256 JWTs and opaque refresh tokens.
 
----
+**Barcode scanning** — Camera and hardware scanner support for machine lookup,
+batch tracking, and work order assignment.
+
+**Telemetry** — Simulated IIoT sensor ingestion (RPM, temperature, vibration,
+power draw).
+
+**Audit log** — Append-only event bus for compliance, shift handovers, and
+configuration changes.
+
+**Multi-tenant hierarchy** — Site → Plant → Line → Work Center structure for
+multi-facility scaling.
+
+## Project layout
+
+```
+backend/src/main/java/com/factoryos/
+├── modules/auth/          # JWT auth, RBAC, user management
+├── modules/machine/       # Machine registry, state machine
+├── modules/downtime/      # Stoppage tracking, reason codes
+├── modules/production/    # Batch orders, counters
+├── modules/maintenance/   # Work orders, dispatch
+├── modules/operations/    # Cross-module orchestration
+├── modules/reporting/     # OEE, KPI summaries
+├── modules/telemetry/     # Sensor metrics ingestion
+├── modules/tenant/        # Multi-plant hierarchy
+└── modules/audit/         # Append-only audit bus
+
+frontend/src/
+├── components/views/      # Page-level components
+├── services/              # API client, auth interceptors
+└── styles/                # Design system
+```
+
+## Documentation
+
+Detailed docs live in [`docs/`](docs/):
+
+- [Architecture](docs/ARCHITECTURE.md) — Module boundaries, transactional invariants, locking strategy
+- [Architecture Essentials](docs/ARCHITECTURE-ESSENTIALS.md) — High-level system overview
+- [PRD](docs/PRD.md) — Requirements, personas, permissions
+- [Operations Runbook](docs/OPERATIONS_RUNBOOK.md) — Backup/restore, rollback, smoke tests
+- [Security](docs/Security.md) — Crypto standards, auth guards, audit retention
+- [Engineering Standards](docs/CODEX.md) — Code conventions, CI pipeline
+- [v1.0.0 Release Notes](docs/RELEASE_NOTES_v1.0.0.md)
+- [v2 Backlog](docs/BACKLOG_V2.md) — Multi-plant, IIoT, predictive maintenance roadmap
 
 ## Contributing
 
-Contributions are welcome! Please read our [Contributing Guide](CONTRIBUTING.md) and check out open issues before opening a pull request.
-
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feat/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'feat: add some amazing feature'`)
-4. Push to the Branch (`git push origin feat/AmazingFeature`)
-5. Open a Pull Request
-
----
+See [CONTRIBUTING.md](CONTRIBUTING.md). Uses conventional commits and feature
+branches.
 
 ## License
 
-Distributed under the MIT License. See [`LICENSE`](LICENSE) for more information.
-
----
-
-<div align="center">
-  <sub>Built for precision manufacturing operations. Maintained by <a href="https://github.com/luqshzeeq3601-art">luqshzeeq3601-art</a> and the FoundryOS Community.</sub>
-</div>
+MIT — see [LICENSE](LICENSE).

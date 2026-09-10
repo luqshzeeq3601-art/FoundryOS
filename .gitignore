@@ -1,4 +1,4 @@
-# Environment files
+# Environment
 .env
 .env.*
 !.env.example
@@ -11,6 +11,13 @@ Thumbs.db
 *.iml
 *.swp
 *.swo
+
+# AI agent tooling
+.agents/
+AGENTS.md
+gemini.md
+skills-lock.json
+graphify-out/
 
 # Node / Frontend
 frontend/node_modules/
@@ -31,10 +38,7 @@ backend/.flattened-pom.xml
 *.crt
 *.jks
 
-# Testing & Logs
+# Logs
 logs/
 *.log
 tests/performance/reports/
-
-# Graphify build outputs & cache (preserve report & json if wanted)
-graphify-out/cache/
