@@ -30,6 +30,8 @@ public interface MachineRepository extends JpaRepository<Machine, UUID> {
 
     List<Machine> findByPlantIdAndIsDeletedFalse(UUID plantId);
 
+    List<Machine> findByLineIdAndIsDeletedFalse(UUID lineId);
+
     List<Machine> findByWorkCellIdAndIsDeletedFalse(UUID workCellId);
 
     @Query("SELECT m FROM Machine m WHERE m.isDeleted = false " +

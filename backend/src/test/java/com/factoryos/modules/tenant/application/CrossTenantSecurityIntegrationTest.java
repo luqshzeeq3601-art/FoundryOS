@@ -72,6 +72,9 @@ class CrossTenantSecurityIntegrationTest {
     @Mock
     private UserPlantMembershipRepository membershipRepository;
 
+    @Mock
+    private com.factoryos.modules.sop.application.QualityGateService qualityGateService;
+
     private MachineService machineService;
     private ProductionOrderService productionOrderService;
     private AuthService authService;
@@ -95,7 +98,7 @@ class CrossTenantSecurityIntegrationTest {
         );
 
         productionOrderService = new ProductionOrderService(
-                productionOrderRepository, machineRepository, auditRecordingService
+                productionOrderRepository, machineRepository, auditRecordingService, qualityGateService
         );
 
         authService = new AuthService(

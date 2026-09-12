@@ -21,6 +21,10 @@ public interface DowntimeEventRepository extends JpaRepository<DowntimeEvent, UU
 
     Optional<DowntimeEvent> findByMachineIdAndEndTimeIsNull(UUID machineId);
 
+    List<DowntimeEvent> findByPlantIdAndIsDeletedFalse(UUID plantId);
+
+    List<DowntimeEvent> findByMachineLineIdAndIsDeletedFalse(UUID lineId);
+
     @Query("SELECT d FROM DowntimeEvent d WHERE d.isDeleted = false " +
            "AND (:machineId IS NULL OR d.machine.id = :machineId) " +
            "AND (:openOnly IS NULL OR (:openOnly = true AND d.endTime IS NULL) OR (:openOnly = false AND d.endTime IS NOT NULL)) " +

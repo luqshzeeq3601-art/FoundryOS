@@ -25,6 +25,12 @@ public class WorkOrderDto {
     private Instant closedAt;
     private String completionNote;
     private String cancellationNote;
+    private boolean isPrescriptive;
+    private UUID healthAssessmentId;
+    private String diagnosticSnapshot;
+    private String suspectedSubsystem;
+    private String recommendedParts;
+    private Instant lastTriggeredAt;
     private Instant createdAt;
     private Instant updatedAt;
     private long version;
@@ -55,6 +61,12 @@ public class WorkOrderDto {
         dto.setClosedAt(order.getClosedAt());
         dto.setCompletionNote(order.getCompletionNote());
         dto.setCancellationNote(order.getCancellationNote());
+        dto.setPrescriptive(order.isPrescriptive());
+        dto.setHealthAssessmentId(order.getHealthAssessmentId());
+        dto.setDiagnosticSnapshot(order.getDiagnosticSnapshot());
+        dto.setSuspectedSubsystem(order.getSuspectedSubsystem());
+        dto.setRecommendedParts(order.getRecommendedParts());
+        dto.setLastTriggeredAt(order.getLastTriggeredAt());
         dto.setCreatedAt(order.getCreatedAt());
         dto.setUpdatedAt(order.getUpdatedAt());
         dto.setVersion(order.getVersion());
@@ -211,6 +223,54 @@ public class WorkOrderDto {
 
     public void setUpdatedAt(Instant updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public boolean isPrescriptive() {
+        return isPrescriptive;
+    }
+
+    public void setPrescriptive(boolean prescriptive) {
+        isPrescriptive = prescriptive;
+    }
+
+    public UUID getHealthAssessmentId() {
+        return healthAssessmentId;
+    }
+
+    public void setHealthAssessmentId(UUID healthAssessmentId) {
+        this.healthAssessmentId = healthAssessmentId;
+    }
+
+    public String getDiagnosticSnapshot() {
+        return diagnosticSnapshot;
+    }
+
+    public void setDiagnosticSnapshot(String diagnosticSnapshot) {
+        this.diagnosticSnapshot = diagnosticSnapshot;
+    }
+
+    public String getSuspectedSubsystem() {
+        return suspectedSubsystem;
+    }
+
+    public void setSuspectedSubsystem(String suspectedSubsystem) {
+        this.suspectedSubsystem = suspectedSubsystem;
+    }
+
+    public String getRecommendedParts() {
+        return recommendedParts;
+    }
+
+    public void setRecommendedParts(String recommendedParts) {
+        this.recommendedParts = recommendedParts;
+    }
+
+    public Instant getLastTriggeredAt() {
+        return lastTriggeredAt;
+    }
+
+    public void setLastTriggeredAt(Instant lastTriggeredAt) {
+        this.lastTriggeredAt = lastTriggeredAt;
     }
 
     public long getVersion() {

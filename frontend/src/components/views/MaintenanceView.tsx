@@ -17,7 +17,7 @@ import { IndustrialButton } from '../common/IndustrialButton';
 import { IndustrialBadge } from '../common/IndustrialBadge';
 import { Modal } from '../common/Modal';
 import { useAuth } from '../../context/AuthContext';
-import { Wrench, Plus, Search, UserCheck, Play, CheckCircle, XCircle, User, Calendar, Cpu } from 'lucide-react';
+import { Wrench, Plus, Search, UserCheck, Play, CheckCircle, XCircle, User, Calendar, Cpu, Zap, Eye, Activity, ShieldAlert } from 'lucide-react';
 
 export const MaintenanceView: React.FC = () => {
   const { hasRole } = useAuth();
@@ -25,6 +25,7 @@ export const MaintenanceView: React.FC = () => {
 
   const [statusFilter, setStatusFilter] = useState<MaintenanceStatus | ''>('');
   const [priorityFilter, setPriorityFilter] = useState<MaintenancePriority | ''>('');
+  const [prescriptiveFilter, setPrescriptiveFilter] = useState<boolean | ''>('');
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(0);
 
@@ -33,6 +34,7 @@ export const MaintenanceView: React.FC = () => {
   const [assigningOrder, setAssigningOrder] = useState<WorkOrderDto | null>(null);
   const [completingOrder, setCompletingOrder] = useState<WorkOrderDto | null>(null);
   const [cancellingOrder, setCancellingOrder] = useState<WorkOrderDto | null>(null);
+  const [viewingDiagnosticOrder, setViewingDiagnosticOrder] = useState<WorkOrderDto | null>(null);
 
   // Form states
   const [workOrderNumber, setWorkOrderNumber] = useState('');
@@ -60,11 +62,12 @@ export const MaintenanceView: React.FC = () => {
 
   // Fetch Work Orders
   const { data: workOrdersData, isLoading } = useQuery<PagedResponse<WorkOrderDto>>({
-    queryKey: ['maintenance-work-orders', statusFilter, priorityFilter, searchTerm, page],
+    queryKey: ['maintenance-work-orders', statusFilter, priorityFilter, prescriptiveFilter, searchTerm, page],
     queryFn: () =>
       api.get<PagedResponse<WorkOrderDto>>('/maintenance-work-orders', {
         status: statusFilter || undefined,
         priority: priorityFilter || undefined,
+        isPrescriptive: prescriptiveFilter !== '' ? prescriptiveFilter : undefined,
         search: searchTerm || undefined,
         page,
         size: 15,
@@ -301,6 +304,20 @@ export const MaintenanceView: React.FC = () => {
               </button>
             ))}
           </div>
+
+          <div className="flex items-center gap-1 border-l border-substrate-border pl-2">
+            <button
+              onClick={() => setPrescriptiveFilter(prescriptiveFilter === true ? '' : true)}
+              className={`px-2.5 py-1 text-xs font-mono uppercase border transition-all flex items-center gap-1.5 ${
+                prescriptiveFilter === true
+                  ? 'bg-amber-950/80 text-amber-300 border-amber-500 font-bold shadow-sm'
+                  : 'bg-industrial-900 text-industrial-400 border-substrate-border hover:text-amber-300'
+              }`}
+            >
+              <Zap size={12} className={prescriptiveFilter === true ? 'text-amber-400 animate-pulse' : 'text-industrial-500'} />
+              <span>PRESCRIPTIVE AUTO</span>
+            </button>
+          </div>
         </div>
 
         <div className="flex items-center gap-2 w-full lg:w-auto">
@@ -365,9 +382,23 @@ export const MaintenanceView: React.FC = () => {
                     }`}
                   >
                     <td className="p-3">
-                      <div className="font-bold text-white uppercase">{wo.workOrderNumber}</div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-white uppercase">{wo.workOrderNumber}</span>
+                        {wo.isPrescriptive && (
+                          <span className="px-1.5 py-0.5 bg-amber-950/80 border border-amber-600 text-amber-300 text-[9px] font-mono font-bold uppercase rounded flex items-center gap-1">
+                            <Zap size={10} className="text-amber-400" />
+                            <span>AUTO PRESCRIBE</span>
+                          </span>
+                        )}
+                      </div>
                       <div className="text-industrial-200 mt-0.5">{wo.title}</div>
-                      <div className="text-[10px] text-industrial-500 truncate max-w-xs">
+                      {wo.suspectedSubsystem && (
+                        <div className="text-[10px] text-cyan-400 font-mono flex items-center gap-1 mt-0.5">
+                          <Activity size={10} />
+                          <span>SUBSYSTEM: {wo.suspectedSubsystem}</span>
+                        </div>
+                      )}
+                      <div className="text-[10px] text-industrial-500 truncate max-w-xs mt-0.5">
                         {wo.description}
                       </div>
                     </td>
@@ -397,6 +428,17 @@ export const MaintenanceView: React.FC = () => {
                     </td>
                     <td className="p-3 text-right">
                       <div className="flex items-center justify-end gap-1.5">
+                        {wo.diagnosticSnapshot && (
+                          <IndustrialButton
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => setViewingDiagnosticOrder(wo)}
+                            title="Inspect Diagnostic Snapshot & Sensor Spectrum"
+                          >
+                            <Eye size={12} className="mr-1 text-cyan-400" />
+                            DIAGNOSTICS
+                          </IndustrialButton>
+                        )}
                         {wo.status === 'OPEN' && (
                           <IndustrialButton
                             variant="secondary"
@@ -762,6 +804,150 @@ export const MaintenanceView: React.FC = () => {
           </div>
         </form>
       </Modal>
+
+      {/* Prescriptive Diagnostic Snapshot Modal */}
+      {viewingDiagnosticOrder && (() => {
+        let snapshot: import('../../types').DiagnosticSnapshotDto | null = null;
+        try {
+          if (viewingDiagnosticOrder.diagnosticSnapshot) {
+            snapshot = JSON.parse(viewingDiagnosticOrder.diagnosticSnapshot);
+          }
+        } catch (e) {
+          console.error("Failed to parse diagnostic snapshot", e);
+        }
+
+        return (
+          <Modal
+            isOpen={!!viewingDiagnosticOrder}
+            onClose={() => setViewingDiagnosticOrder(null)}
+            title="PREDICTIVE DIAGNOSTIC SNAPSHOT"
+            subtitle={`${viewingDiagnosticOrder.workOrderNumber} // ${viewingDiagnosticOrder.machineName}`}
+          >
+            <div className="space-y-4 font-mono text-xs">
+              {/* Top Banner: Anomaly & Health Score */}
+              <div className="bg-industrial-950 p-4 border border-substrate-border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div>
+                  <div className="text-[10px] text-industrial-400 uppercase">ANOMALOUS KINEMATIC DEFECT:</div>
+                  <div className="text-base font-bold text-hazard-amber flex items-center gap-1.5 mt-0.5">
+                    <ShieldAlert size={16} />
+                    <span>{snapshot?.dominantFault || viewingDiagnosticOrder.suspectedSubsystem || 'BEARING / ROTOR DEFECT'}</span>
+                  </div>
+                  <div className="text-[10px] text-cyan-400 mt-1">
+                    SUSPECTED SUBSYSTEM: {snapshot?.suspectedSubsystem || viewingDiagnosticOrder.suspectedSubsystem || 'Drive Spindle Assembly'}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <div className="text-[10px] text-industrial-400 uppercase">HEALTH SCORE</div>
+                    <div className={`text-2xl font-black ${snapshot && snapshot.healthScore < 40 ? 'text-hazard-red' : 'text-hazard-amber'}`}>
+                      {snapshot?.healthScore ?? 50}%
+                    </div>
+                  </div>
+                  <div className="text-right pl-3 border-l border-substrate-border">
+                    <div className="text-[10px] text-industrial-400 uppercase">ISO 10816</div>
+                    <div className="text-lg font-bold text-white">
+                      {snapshot?.isoSeverityZone || 'ZONE C'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Sensor Telemetry Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div className="bg-industrial-900 border border-substrate-border p-2.5">
+                  <div className="text-[10px] text-industrial-400 uppercase">RMS VELOCITY</div>
+                  <div className="text-sm font-bold text-white mt-1">
+                    {snapshot?.rmsVelocityMmS?.toFixed(2) || '4.80'} mm/s
+                  </div>
+                </div>
+                <div className="bg-industrial-900 border border-substrate-border p-2.5">
+                  <div className="text-[10px] text-industrial-400 uppercase">SPINDLE TEMP</div>
+                  <div className="text-sm font-bold text-hazard-amber mt-1">
+                    {snapshot?.spindleTemperatureC ? `${snapshot.spindleTemperatureC.toFixed(1)} °C` : 'N/A'}
+                  </div>
+                </div>
+                <div className="bg-industrial-900 border border-substrate-border p-2.5">
+                  <div className="text-[10px] text-industrial-400 uppercase">CREST FACTOR</div>
+                  <div className="text-sm font-bold text-white mt-1">
+                    {snapshot?.crestFactor?.toFixed(2) || '3.50'}
+                  </div>
+                </div>
+                <div className="bg-industrial-900 border border-substrate-border p-2.5">
+                  <div className="text-[10px] text-industrial-400 uppercase">KURTOSIS</div>
+                  <div className="text-sm font-bold text-white mt-1">
+                    {snapshot?.kurtosis?.toFixed(2) || '4.20'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Dominant Harmonic Peaks */}
+              {snapshot?.dominantPeaks && snapshot.dominantPeaks.length > 0 && (
+                <div className="space-y-1.5">
+                  <div className="text-[10px] text-industrial-400 uppercase font-bold flex items-center gap-1.5">
+                    <Activity size={12} className="text-cyan-400" />
+                    IDENTIFIED SPECTRAL HARMONIC PEAKS:
+                  </div>
+                  <div className="border border-substrate-border overflow-hidden">
+                    <table className="w-full text-left text-[11px]">
+                      <thead className="bg-industrial-900 border-b border-substrate-border text-[9px] text-industrial-400 uppercase">
+                        <tr>
+                          <th className="p-1.5">FREQ (HZ)</th>
+                          <th className="p-1.5">AMPLITUDE</th>
+                          <th className="p-1.5">HARMONIC CLASSIFICATION</th>
+                          <th className="p-1.5 text-right">CONFIDENCE</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-substrate-border">
+                        {snapshot.dominantPeaks.map((p, idx) => (
+                          <tr key={idx} className="hover:bg-industrial-900/40">
+                            <td className="p-1.5 text-white font-bold">{p.frequencyHz.toFixed(1)} Hz</td>
+                            <td className="p-1.5 text-cyan-300">{p.amplitudeMmS.toFixed(2)} mm/s</td>
+                            <td className="p-1.5 text-hazard-amber">{p.faultHarmonicType}</td>
+                            <td className="p-1.5 text-right text-industrial-300">{Math.round(p.confidence * 100)}%</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Recommended Spare Parts */}
+              <div className="bg-industrial-900/80 border border-substrate-border p-3 space-y-1.5">
+                <div className="text-[10px] text-terminal-cyan uppercase font-bold flex items-center gap-1.5">
+                  <Wrench size={12} />
+                  RECOMMENDED SPARE PARTS & TOOLING:
+                </div>
+                <div className="text-industrial-200 text-xs leading-relaxed">
+                  {viewingDiagnosticOrder.recommendedParts || snapshot?.recommendedParts?.join(', ') || 'SKF 7014 Angular Contact Bearing Set; Alignment Shims'}
+                </div>
+              </div>
+
+              {/* Prescriptive Guidance */}
+              <div className="bg-industrial-900/80 border border-substrate-border p-3 space-y-1.5">
+                <div className="text-[10px] text-hazard-amber uppercase font-bold flex items-center gap-1.5">
+                  <Zap size={12} />
+                  PRESCRIPTIVE ACTION GUIDANCE:
+                </div>
+                <div className="text-industrial-300 text-xs leading-relaxed">
+                  {snapshot?.prescriptiveAction || viewingDiagnosticOrder.description}
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-3 border-t border-substrate-border">
+                <IndustrialButton
+                  type="button"
+                  variant="primary"
+                  onClick={() => setViewingDiagnosticOrder(null)}
+                >
+                  CLOSE DIAGNOSTICS
+                </IndustrialButton>
+              </div>
+            </div>
+          </Modal>
+        );
+      })()}
     </div>
   );
 };

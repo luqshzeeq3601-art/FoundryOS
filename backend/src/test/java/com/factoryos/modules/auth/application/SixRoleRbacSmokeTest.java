@@ -213,7 +213,7 @@ class SixRoleRbacSmokeTest {
     @Test
     @WithMockUser(roles = "TECHNICIAN")
     void technician_CanManageMaintenanceAndDowntime_ForbiddenOnAuditAndUserAdmin() throws Exception {
-        when(maintenanceService.getWorkOrders(any(), any(), any(), any(), any(), any()))
+        when(maintenanceService.getWorkOrders(any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(new PagedResponse<WorkOrderDto>(Collections.emptyList(), 0, 20, 0L, 0));
 
         mockMvc.perform(get("/api/v1/maintenance-work-orders"))

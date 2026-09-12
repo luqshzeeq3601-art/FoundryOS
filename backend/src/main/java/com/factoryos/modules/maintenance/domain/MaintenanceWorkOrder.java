@@ -62,6 +62,24 @@ public class MaintenanceWorkOrder {
     @Column(name = "cancellation_note", length = 2000)
     private String cancellationNote;
 
+    @Column(name = "is_prescriptive", nullable = false)
+    private boolean isPrescriptive = false;
+
+    @Column(name = "health_assessment_id")
+    private UUID healthAssessmentId;
+
+    @Column(name = "diagnostic_snapshot", columnDefinition = "TEXT")
+    private String diagnosticSnapshot;
+
+    @Column(name = "suspected_subsystem", length = 128)
+    private String suspectedSubsystem;
+
+    @Column(name = "recommended_parts", columnDefinition = "TEXT")
+    private String recommendedParts;
+
+    @Column(name = "last_triggered_at")
+    private Instant lastTriggeredAt;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
 
@@ -242,6 +260,54 @@ public class MaintenanceWorkOrder {
 
     public void setDeleted(boolean deleted) {
         isDeleted = deleted;
+    }
+
+    public boolean isPrescriptive() {
+        return isPrescriptive;
+    }
+
+    public void setPrescriptive(boolean prescriptive) {
+        isPrescriptive = prescriptive;
+    }
+
+    public UUID getHealthAssessmentId() {
+        return healthAssessmentId;
+    }
+
+    public void setHealthAssessmentId(UUID healthAssessmentId) {
+        this.healthAssessmentId = healthAssessmentId;
+    }
+
+    public String getDiagnosticSnapshot() {
+        return diagnosticSnapshot;
+    }
+
+    public void setDiagnosticSnapshot(String diagnosticSnapshot) {
+        this.diagnosticSnapshot = diagnosticSnapshot;
+    }
+
+    public String getSuspectedSubsystem() {
+        return suspectedSubsystem;
+    }
+
+    public void setSuspectedSubsystem(String suspectedSubsystem) {
+        this.suspectedSubsystem = suspectedSubsystem;
+    }
+
+    public String getRecommendedParts() {
+        return recommendedParts;
+    }
+
+    public void setRecommendedParts(String recommendedParts) {
+        this.recommendedParts = recommendedParts;
+    }
+
+    public Instant getLastTriggeredAt() {
+        return lastTriggeredAt;
+    }
+
+    public void setLastTriggeredAt(Instant lastTriggeredAt) {
+        this.lastTriggeredAt = lastTriggeredAt;
     }
 
     public long getVersion() {

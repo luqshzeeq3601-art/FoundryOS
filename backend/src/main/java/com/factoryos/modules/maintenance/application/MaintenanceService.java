@@ -52,12 +52,13 @@ public class MaintenanceService {
             UUID machineId,
             MaintenancePriority priority,
             MaintenanceStatus status,
+            Boolean isPrescriptive,
             UUID assignedToId,
             String search,
             Pageable pageable
     ) {
         Page<MaintenanceWorkOrder> page = maintenanceWorkOrderRepository.searchWorkOrders(
-                machineId, priority, status, assignedToId, search, pageable
+                machineId, priority, status, isPrescriptive, assignedToId, search, pageable
         );
         return PagedResponse.from(page.map(WorkOrderDto::from));
     }

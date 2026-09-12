@@ -23,6 +23,8 @@ public interface ProductionOrderRepository extends JpaRepository<ProductionOrder
 
     Optional<ProductionOrder> findByOrderNumber(String orderNumber);
 
+    Optional<ProductionOrder> findByErpOrderIdAndIsDeletedFalse(String erpOrderId);
+
     boolean existsByOrderNumberAndIsDeletedFalse(String orderNumber);
 
     Optional<ProductionOrder> findByMachineAndStatus(Machine machine, ProductionOrderStatus status);
@@ -32,6 +34,8 @@ public interface ProductionOrderRepository extends JpaRepository<ProductionOrder
     List<ProductionOrder> findByMachineIdAndStatusAndIsDeletedFalse(UUID machineId, ProductionOrderStatus status);
 
     List<ProductionOrder> findByPlantIdAndIsDeletedFalse(UUID plantId);
+
+    List<ProductionOrder> findByMachineLineIdAndIsDeletedFalse(UUID lineId);
 
     @Query("SELECT p FROM ProductionOrder p WHERE p.isDeleted = false " +
            "AND (:plantId IS NULL OR p.plant.id = :plantId) " +

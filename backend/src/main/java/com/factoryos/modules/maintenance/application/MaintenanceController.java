@@ -34,12 +34,13 @@ public class MaintenanceController {
             @RequestParam(required = false) UUID machineId,
             @RequestParam(required = false) MaintenancePriority priority,
             @RequestParam(required = false) MaintenanceStatus status,
+            @RequestParam(required = false) Boolean isPrescriptive,
             @RequestParam(required = false) UUID assignedToId,
             @RequestParam(required = false) String search,
             @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable
     ) {
         return ResponseEntity.ok(ApiResponse.ok(
-                maintenanceService.getWorkOrders(machineId, priority, status, assignedToId, search, pageable)
+                maintenanceService.getWorkOrders(machineId, priority, status, isPrescriptive, assignedToId, search, pageable)
         ));
     }
 

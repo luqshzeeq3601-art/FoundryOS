@@ -14,6 +14,11 @@ import { AdminUsersView } from './components/views/AdminUsersView';
 import { AuditLogView } from './components/views/AuditLogView';
 import { LiveTelemetryView } from './components/views/LiveTelemetryView';
 import { HierarchyManagementView } from './components/views/HierarchyManagementView';
+import { EnterpriseFleetAnalyticsView } from './components/views/EnterpriseFleetAnalyticsView';
+import { EdgeResilienceView } from './components/views/EdgeResilienceView';
+import { DigitalSopView } from './components/views/DigitalSopView';
+import { VibrationHealthView } from './components/views/VibrationHealthView';
+import { ErpIntegrationHubView } from './components/views/ErpIntegrationHubView';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -46,6 +51,16 @@ const MainLayout: React.FC = () => {
 
   const renderActiveView = () => {
     switch (activeTab) {
+      case 'fleet-analytics':
+        return <EnterpriseFleetAnalyticsView />;
+      case 'edge-resilience':
+        return <EdgeResilienceView />;
+      case 'digital-sop':
+        return <DigitalSopView />;
+      case 'vibration-health':
+        return <VibrationHealthView />;
+      case 'erp-sync':
+        return <ErpIntegrationHubView />;
       case 'machines':
         return <MachinesView />;
       case 'telemetry':

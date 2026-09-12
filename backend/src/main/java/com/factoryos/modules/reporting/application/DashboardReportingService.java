@@ -84,7 +84,7 @@ public class DashboardReportingService {
         summary.setOpenWorkOrders(openWOs);
         summary.setInProgressWorkOrders(inProgressWOs);
 
-        var criticalWOs = maintenanceWorkOrderRepository.searchWorkOrders(null, MaintenancePriority.CRITICAL, null, null, null, Pageable.unpaged());
+        var criticalWOs = maintenanceWorkOrderRepository.searchWorkOrders(null, MaintenancePriority.CRITICAL, null, null, null, null, Pageable.unpaged());
         summary.setCriticalWorkOrders(criticalWOs.getTotalElements());
 
         // Downtime Breakdown

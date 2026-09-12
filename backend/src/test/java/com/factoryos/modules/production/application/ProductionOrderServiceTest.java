@@ -12,6 +12,7 @@ import com.factoryos.modules.production.dto.ProductionOrderDto;
 import com.factoryos.modules.production.dto.TransitionOrderStatusRequest;
 import com.factoryos.modules.production.dto.UpdateProductionProgressRequest;
 import com.factoryos.modules.production.repository.ProductionOrderRepository;
+import com.factoryos.modules.sop.application.QualityGateService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -37,6 +38,9 @@ class ProductionOrderServiceTest {
     @Mock
     private AuditRecordingService auditRecordingService;
 
+    @Mock
+    private QualityGateService qualityGateService;
+
     private ProductionOrderService productionOrderService;
 
     @BeforeEach
@@ -44,7 +48,8 @@ class ProductionOrderServiceTest {
         productionOrderService = new ProductionOrderService(
                 productionOrderRepository,
                 machineRepository,
-                auditRecordingService
+                auditRecordingService,
+                qualityGateService
         );
     }
 
@@ -171,6 +176,36 @@ class ProductionOrderServiceTest {
         assertEquals(ProductionOrderStatus.COMPLETED, order.getStatus());
         assertEquals(MachineStatus.IDLE, machine.getStatus());
         assertNotNull(order.getCompletedAt());
+        verify(qualityGateService).validateOrderCompletionGate(orderId);
         verify(machineRepository).save(machine);
+    }
+
+    @Test
+    void transitionStatus_ToCompleted_FailsIfQualityGateThrowsException() {
+        UUID orderId = UUID.randomUUID();
+        Machine machine = new Machine();
+        machine.setId(UUID.randomUUID());
+        machine.setName("CNC Line 1");
+        machine.setStatus(MachineStatus.RUNNING);
+
+        ProductionOrder order = new ProductionOrder();
+        order.setId(orderId);
+        order.setMachine(machine);
+        order.setStatus(ProductionOrderStatus.IN_PROGRESS);
+        order.setVersion(1L);
+
+        when(productionOrderRepository.findByIdAndIsDeletedFalse(orderId)).thenReturn(Optional.of(order));
+        doThrow(AppException.badRequest("QUALITY_GATE_FAILED: Incomplete inspection steps"))
+                .when(qualityGateService).validateOrderCompletionGate(orderId);
+
+        TransitionOrderStatusRequest request = new TransitionOrderStatusRequest();
+        request.setTargetStatus(ProductionOrderStatus.COMPLETED);
+        request.setExpectedVersion(1L);
+
+        AppException ex = assertThrows(AppException.class, () ->
+                productionOrderService.transitionStatus(orderId, request, null));
+
+        assertTrue(ex.getMessage().contains("QUALITY_GATE_FAILED"));
+        verify(productionOrderRepository, never()).save(any());
     }
 }

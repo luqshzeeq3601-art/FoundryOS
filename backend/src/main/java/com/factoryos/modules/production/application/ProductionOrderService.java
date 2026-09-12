@@ -11,6 +11,7 @@ import com.factoryos.modules.production.domain.ProductionOrder;
 import com.factoryos.modules.production.domain.ProductionOrderStatus;
 import com.factoryos.modules.production.dto.*;
 import com.factoryos.modules.production.repository.ProductionOrderRepository;
+import com.factoryos.modules.sop.application.QualityGateService;
 import com.factoryos.modules.tenant.context.TenantContextHolder;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -28,15 +29,18 @@ public class ProductionOrderService {
     private final ProductionOrderRepository productionOrderRepository;
     private final MachineRepository machineRepository;
     private final AuditRecordingService auditRecordingService;
+    private final QualityGateService qualityGateService;
 
     public ProductionOrderService(
             ProductionOrderRepository productionOrderRepository,
             MachineRepository machineRepository,
-            AuditRecordingService auditRecordingService
+            AuditRecordingService auditRecordingService,
+            QualityGateService qualityGateService
     ) {
         this.productionOrderRepository = productionOrderRepository;
         this.machineRepository = machineRepository;
         this.auditRecordingService = auditRecordingService;
+        this.qualityGateService = qualityGateService;
     }
 
     public PagedResponse<ProductionOrderDto> getProductionOrders(
@@ -253,6 +257,9 @@ public class ProductionOrderService {
                 machineRepository.save(machine);
             }
         } else if (targetStatus == ProductionOrderStatus.COMPLETED) {
+            // Mandatory Invariant: Verify digital SOP checklist and quality sign-off gate before completing order
+            qualityGateService.validateOrderCompletionGate(order.getId());
+
             order.setCompletedAt(Instant.now());
             order.setClosedAt(Instant.now());
             if (request.getClosureNote() != null) {

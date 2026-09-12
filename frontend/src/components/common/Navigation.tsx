@@ -9,10 +9,14 @@ import {
   ShieldCheck, 
   Users,
   Radio,
-  FolderTree
+  FolderTree,
+  BarChart3,
+  Server,
+  Sliders,
+  Activity
 } from 'lucide-react';
 
-export type TabId = 'dashboard' | 'machines' | 'telemetry' | 'downtime' | 'production' | 'maintenance' | 'hierarchy' | 'audit' | 'admin';
+export type TabId = 'dashboard' | 'fleet-analytics' | 'edge-resilience' | 'digital-sop' | 'vibration-health' | 'erp-sync' | 'machines' | 'telemetry' | 'downtime' | 'production' | 'maintenance' | 'hierarchy' | 'audit' | 'admin';
 
 interface NavigationProps {
   activeTab: TabId;
@@ -24,6 +28,36 @@ export const Navigation: React.FC<NavigationProps> = ({ activeTab, onTabChange }
 
   const navItems: Array<{ id: TabId; label: string; icon: React.ReactNode; roles?: string[] }> = [
     { id: 'dashboard', label: 'DASHBOARD', icon: <LayoutDashboard size={16} /> },
+    { 
+      id: 'fleet-analytics', 
+      label: 'FLEET BENCHMARK', 
+      icon: <BarChart3 size={16} />, 
+      roles: ['ADMIN', 'PRODUCTION_MANAGER', 'ENGINEER', 'VIEWER'] 
+    },
+    { 
+      id: 'edge-resilience', 
+      label: 'EDGE RESILIENCE', 
+      icon: <Server size={16} />, 
+      roles: ['ADMIN', 'PRODUCTION_MANAGER', 'ENGINEER', 'TECHNICIAN'] 
+    },
+    { 
+      id: 'digital-sop', 
+      label: 'DIGITAL SOP // QUALITY', 
+      icon: <Sliders size={16} />, 
+      roles: ['ADMIN', 'PRODUCTION_MANAGER', 'ENGINEER', 'TECHNICIAN', 'OPERATOR', 'VIEWER'] 
+    },
+    { 
+      id: 'vibration-health', 
+      label: 'VIBRATION // FFT', 
+      icon: <Activity size={16} />, 
+      roles: ['ADMIN', 'PRODUCTION_MANAGER', 'ENGINEER', 'TECHNICIAN', 'VIEWER'] 
+    },
+    { 
+      id: 'erp-sync', 
+      label: 'ERP // SCM SYNC', 
+      icon: <FolderTree size={16} />, 
+      roles: ['ADMIN', 'PRODUCTION_MANAGER', 'ENGINEER', 'TECHNICIAN', 'VIEWER'] 
+    },
     { id: 'machines', label: 'MACHINES', icon: <Cpu size={16} /> },
     { id: 'telemetry', label: 'TELEMETRY // IIoT', icon: <Radio size={16} /> },
     { id: 'downtime', label: 'DOWNTIME', icon: <AlertTriangle size={16} /> },

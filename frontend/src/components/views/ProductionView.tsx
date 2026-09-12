@@ -698,6 +698,15 @@ export const ProductionView: React.FC = () => {
             )}
           </div>
 
+          {targetStatus === 'COMPLETED' && (
+            <div className="bg-industrial-900 border border-amber-600/40 p-3 rounded text-xs font-mono text-amber-200/90 flex items-start gap-2">
+              <span className="text-amber-400 font-bold shrink-0">[QUALITY GATE]</span>
+              <span>
+                Mandatory Invariant Check: Order completion requires all mandatory SOP inspection checklist steps to be completed and signed off. If quality gate is pending, transition will be rejected.
+              </span>
+            </div>
+          )}
+
           {(targetStatus === 'COMPLETED' || targetStatus === 'CANCELLED') && (
             <div>
               <label className="block text-xs font-mono uppercase text-industrial-400 mb-1">

@@ -55,6 +55,21 @@ public class ProductionOrder {
     @Column(name = "closure_note", length = 2000)
     private String closureNote;
 
+    @Column(name = "erp_system", length = 32)
+    private String erpSystem;
+
+    @Column(name = "erp_order_id", length = 64)
+    private String erpOrderId;
+
+    @Column(name = "erp_batch_number", length = 64)
+    private String erpBatchNumber;
+
+    @Column(name = "erp_sync_status", nullable = false, length = 32)
+    private String erpSyncStatus = "LOCAL_ONLY";
+
+    @Column(name = "last_erp_sync_at")
+    private Instant lastErpSyncAt;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt = Instant.now();
 
@@ -227,6 +242,46 @@ public class ProductionOrder {
 
     public void setPlant(com.factoryos.modules.tenant.domain.Plant plant) {
         this.plant = plant;
+    }
+
+    public String getErpSystem() {
+        return erpSystem;
+    }
+
+    public void setErpSystem(String erpSystem) {
+        this.erpSystem = erpSystem;
+    }
+
+    public String getErpOrderId() {
+        return erpOrderId;
+    }
+
+    public void setErpOrderId(String erpOrderId) {
+        this.erpOrderId = erpOrderId;
+    }
+
+    public String getErpBatchNumber() {
+        return erpBatchNumber;
+    }
+
+    public void setErpBatchNumber(String erpBatchNumber) {
+        this.erpBatchNumber = erpBatchNumber;
+    }
+
+    public String getErpSyncStatus() {
+        return erpSyncStatus;
+    }
+
+    public void setErpSyncStatus(String erpSyncStatus) {
+        this.erpSyncStatus = erpSyncStatus;
+    }
+
+    public Instant getLastErpSyncAt() {
+        return lastErpSyncAt;
+    }
+
+    public void setLastErpSyncAt(Instant lastErpSyncAt) {
+        this.lastErpSyncAt = lastErpSyncAt;
     }
 
     public long getVersion() {

@@ -238,4 +238,173 @@ export const authApi = {
     api.post<import('../types').LoginResponse>('/auth/switch-plant', { plantId }),
 };
 
+// Enterprise Fleet Analytics & Benchmarking API (v2 Epic 5 Story 2)
+export const enterpriseAnalyticsApi = {
+  getOeeMatrix: (params?: { interval?: string; enterpriseId?: string; status?: string }) =>
+    api.get<import('../types').EnterpriseOeeMatrixDto>('/api/v2/analytics/enterprise/oee-matrix', params),
+
+  downloadExport: async (format: 'csv' | 'pdf', interval: string = '24H') => {
+    const url = `/api/v2/analytics/enterprise/export/${format}?interval=${encodeURIComponent(interval)}`;
+    const response = await apiClient.get(url, {
+      responseType: 'blob',
+      baseURL: '',
+    });
+    
+    // Trigger browser file download
+    const blob = new Blob([response.data], {
+      type: format === 'csv' ? 'text/csv;charset=utf-8;' : 'application/pdf',
+    });
+    const downloadUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.setAttribute('download', `factoryos_fleet_benchmark_${interval.toLowerCase()}_${new Date().toISOString().slice(0, 10)}.${format}`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(downloadUrl);
+  },
+
+  triggerScheduledReport: (format: 'CSV' | 'PDF' = 'PDF', interval: string = '24H') =>
+    api.post<import('../types').ScheduledReportResponseDto>(`/api/v2/analytics/enterprise/reports/scheduled?format=${format}&interval=${interval}`),
+};
+
+// Edge Store-and-Forward & Resilience API (v2 Epic 5 Story 3)
+export const edgeApi = {
+  getGateways: (plantId?: string) =>
+    api.get<import('../types').EdgeGatewayDto[]>('/api/v2/edge/gateways', plantId ? { plantId } : undefined),
+
+  getGateway: (code: string) =>
+    api.get<import('../types').EdgeGatewayDto>(`/api/v2/edge/gateways/${code}`),
+
+  createGateway: (data: import('../types').EdgeGatewayCreateRequest) =>
+    api.post<import('../types').EdgeGatewayDto>('/api/v2/edge/gateways', data),
+
+  recordHeartbeat: (code: string, data?: import('../types').EdgeGatewayHeartbeatRequest) =>
+    api.post<import('../types').EdgeGatewayDto>(`/api/v2/edge/gateways/${code}/heartbeat`, data),
+
+  getManifest: (code: string) =>
+    api.get<import('../types').EdgeOfflineCacheManifestDto>(`/api/v2/edge/gateways/${code}/manifest`),
+
+  syncBatch: (batch: import('../types').EdgeSyncBatchRequestDto) =>
+    api.post<import('../types').EdgeSyncBatchResultDto>('/api/v2/edge/sync/batch', batch),
+
+  getBatches: () =>
+    api.get<import('../types').EdgeSyncBatchResultDto[]>('/api/v2/edge/batches'),
+
+  getGatewayBatches: (code: string) =>
+    api.get<import('../types').EdgeSyncBatchResultDto[]>(`/api/v2/edge/gateways/${code}/batches`),
+
+  getBatchTransactions: (batchId: string) =>
+    api.get<import('../types').EdgeTransactionLogDto[]>(`/api/v2/edge/batches/${batchId}/transactions`),
+
+  getRecentTransactions: () =>
+    api.get<import('../types').EdgeTransactionLogDto[]>('/api/v2/edge/transactions/recent'),
+
+  simulateDisconnect: (data: import('../types').SimulateDisconnectRequestDto) =>
+    api.post<import('../types').EdgeSyncBatchResultDto>('/api/v2/edge/simulate-disconnect', data),
+};
+
+// Digital SOP & Quality Gate API (v2 Epic 8 Story 2)
+export const sopApi = {
+  getSops: (params?: { productCode?: string; category?: string }) =>
+    api.get<import('../types').SopDto[]>('/api/v2/sop/templates', params),
+
+  getSopById: (id: string) =>
+    api.get<import('../types').SopDto>(`/api/v2/sop/templates/${id}`),
+
+  getSopByCode: (code: string) =>
+    api.get<import('../types').SopDto>(`/api/v2/sop/templates/code/${code}`),
+
+  createSop: (data: Partial<import('../types').SopDto>) =>
+    api.post<import('../types').SopDto>('/api/v2/sop/templates', data),
+
+  startSession: (data: import('../types').StartSopSessionRequestDto) =>
+    api.post<import('../types').SopExecutionSessionDto>('/api/v2/sop/sessions/start', data),
+
+  getSessionById: (sessionId: string) =>
+    api.get<import('../types').SopExecutionSessionDto>(`/api/v2/sop/sessions/${sessionId}`),
+
+  getSessionsForOrder: (orderId: string) =>
+    api.get<import('../types').SopExecutionSessionDto[]>(`/api/v2/sop/sessions/order/${orderId}`),
+
+  recordStepExecution: (sessionId: string, data: import('../types').RecordStepExecutionRequestDto) =>
+    api.post<import('../types').SopStepExecutionRecordDto>(`/api/v2/sop/sessions/${sessionId}/steps`, data),
+
+  signOffSession: (sessionId: string, data: import('../types').QualitySignOffRequestDto) =>
+    api.post<import('../types').SopExecutionSessionDto>(`/api/v2/sop/sessions/${sessionId}/sign-off`, data),
+
+  getGateStatusForOrder: (orderId: string) =>
+    api.get<import('../types').QualityGateStatusDto>(`/api/v2/sop/gates/order/${orderId}`),
+
+  signOffGate: (orderId: string, data: import('../types').QualitySignOffRequestDto) =>
+    api.post<import('../types').QualityGateStatusDto>(`/api/v2/sop/gates/order/${orderId}/sign-off`, data),
+};
+
+// Spindle Vibration FFT & Machine Health API (v2 Epic 6 Story 1)
+export const vibrationApi = {
+  analyzeBurst: (data: import('../types').VibrationBurstIngestDto) =>
+    api.post<import('../types').MachineHealthAssessmentDto>('/api/v2/vibration/analyze', data),
+
+  simulateBurst: (data: import('../types').SimulateBurstRequestDto) =>
+    api.post<import('../types').MachineHealthAssessmentDto>('/api/v2/vibration/simulate-burst', data),
+
+  getSpectrum: (machineId: string) =>
+    api.get<import('../types').FftSpectrumDto>(`/api/v2/vibration/machines/${machineId}/spectrum`),
+
+  getHealthAssessment: (machineId: string) =>
+    api.get<import('../types').MachineHealthAssessmentDto>(`/api/v2/vibration/machines/${machineId}/health`),
+
+  getHealthHistory: (machineId: string) =>
+    api.get<import('../types').MachineHealthAssessmentDto[]>(`/api/v2/vibration/machines/${machineId}/history`),
+
+  getFleetHealthSummary: (plantId?: string) =>
+    api.get<import('../types').FleetHealthSummaryDto>('/api/v2/vibration/fleet/health-summary', plantId ? { plantId } : undefined),
+};
+
+// ERP Synchronization Hub API (v2 Epic 7 Story 1)
+export const erpApi = {
+  getConnectors: () =>
+    api.get<import('../types').ErpConnectorDto[]>('/api/v2/erp/connectors'),
+
+  getConnectorById: (id: string) =>
+    api.get<import('../types').ErpConnectorDto>(`/api/v2/erp/connectors/${id}`),
+
+  createConnector: (data: import('../types').CreateErpConnectorRequest) =>
+    api.post<import('../types').ErpConnectorDto>('/api/v2/erp/connectors', data),
+
+  testConnector: (id: string) =>
+    api.post<{ connectorId: string; success: boolean; status: string }>(`/api/v2/erp/connectors/${id}/test`),
+
+  syncInbound: (id: string) =>
+    api.post<{ connectorId: string; syncedCount: number; orders: string[] }>(`/api/v2/erp/connectors/${id}/sync-inbound`),
+
+  submitConfirmation: (orderId: string, data: { confirmedGoodQty: number; confirmedScrapQty: number; scrapReason?: string; laborHours?: number; machineHours?: number }) =>
+    api.post<import('../types').ErpOrderConfirmationDto>(`/api/v2/erp/orders/${orderId}/confirm`, data),
+
+  getSyncLogs: () =>
+    api.get<import('../types').ErpSyncLogDto[]>('/api/v2/erp/sync-logs'),
+
+  getConfirmations: () =>
+    api.get<import('../types').ErpOrderConfirmationDto[]>('/api/v2/erp/confirmations'),
+};
+
+// Material Backflushing & BOM Explosion API (v2 Epic 7 Story 2)
+export const materialsApi = {
+  getAllMaterials: () =>
+    api.get<import('../types').MaterialDto[]>('/api/v2/materials'),
+
+  getBomExplosion: (productCode: string, plannedQuantity: number = 100) =>
+    api.get<import('../types').BomExplosionDto>(`/api/v2/materials/bom/${encodeURIComponent(productCode)}/explosion`, { plannedQuantity }),
+
+  recordOutput: (orderId: string, data: import('../types').RecordProductionOutputRequest) =>
+    api.post<import('../types').MaterialConsumptionRecordDto[]>(`/api/v2/materials/orders/${orderId}/record-output`, data),
+
+  getConsumption: (orderId?: string) =>
+    api.get<import('../types').MaterialConsumptionRecordDto[]>('/api/v2/materials/consumption', orderId ? { orderId } : undefined),
+
+  getVarianceAlerts: () =>
+    api.get<import('../types').MaterialConsumptionRecordDto[]>('/api/v2/materials/variance-alerts'),
+};
+
+
 

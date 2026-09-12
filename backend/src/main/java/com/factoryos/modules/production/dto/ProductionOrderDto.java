@@ -24,6 +24,11 @@ public class ProductionOrderDto {
     private Instant completedAt;
     private Instant closedAt;
     private String closureNote;
+    private String erpSystem;
+    private String erpOrderId;
+    private String erpBatchNumber;
+    private String erpSyncStatus;
+    private Instant lastErpSyncAt;
     private Instant createdAt;
     private Instant updatedAt;
     private long version;
@@ -54,6 +59,11 @@ public class ProductionOrderDto {
         dto.setCompletedAt(order.getCompletedAt());
         dto.setClosedAt(order.getClosedAt());
         dto.setClosureNote(order.getClosureNote());
+        dto.setErpSystem(order.getErpSystem());
+        dto.setErpOrderId(order.getErpOrderId());
+        dto.setErpBatchNumber(order.getErpBatchNumber());
+        dto.setErpSyncStatus(order.getErpSyncStatus());
+        dto.setLastErpSyncAt(order.getLastErpSyncAt());
         dto.setCreatedAt(order.getCreatedAt());
         dto.setUpdatedAt(order.getUpdatedAt());
         dto.setVersion(order.getVersion());
@@ -210,6 +220,46 @@ public class ProductionOrderDto {
 
     public void setUpdatedAt(Instant updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public String getErpSystem() {
+        return erpSystem;
+    }
+
+    public void setErpSystem(String erpSystem) {
+        this.erpSystem = erpSystem;
+    }
+
+    public String getErpOrderId() {
+        return erpOrderId;
+    }
+
+    public void setErpOrderId(String erpOrderId) {
+        this.erpOrderId = erpOrderId;
+    }
+
+    public String getErpBatchNumber() {
+        return erpBatchNumber;
+    }
+
+    public void setErpBatchNumber(String erpBatchNumber) {
+        this.erpBatchNumber = erpBatchNumber;
+    }
+
+    public String getErpSyncStatus() {
+        return erpSyncStatus;
+    }
+
+    public void setErpSyncStatus(String erpSyncStatus) {
+        this.erpSyncStatus = erpSyncStatus;
+    }
+
+    public Instant getLastErpSyncAt() {
+        return lastErpSyncAt;
+    }
+
+    public void setLastErpSyncAt(Instant lastErpSyncAt) {
+        this.lastErpSyncAt = lastErpSyncAt;
     }
 
     public long getVersion() {

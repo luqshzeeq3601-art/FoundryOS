@@ -12,5 +12,6 @@ import java.util.UUID;
 public interface ProductionLineRepository extends JpaRepository<ProductionLine, UUID> {
     Optional<ProductionLine> findByIdAndIsDeletedFalse(UUID id);
     List<ProductionLine> findByAreaIdAndIsDeletedFalseOrderByCodeAsc(UUID areaId);
+    List<ProductionLine> findByAreaPlantIdAndIsDeletedFalseOrderByCodeAsc(UUID plantId);
     boolean existsByAreaIdAndCodeIgnoreCaseAndIsDeletedFalse(UUID areaId, String code);
 }
