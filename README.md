@@ -1,5 +1,7 @@
 # FoundryOS
 
+> **Project Status:** 🚧 **In Progress — not yet complete.** Active development and validation are ongoing.
+
 [![CI](https://github.com/luqshzeeq3601-art/FoundryOS/actions/workflows/ci.yml/badge.svg)](https://github.com/luqshzeeq3601-art/FoundryOS/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
