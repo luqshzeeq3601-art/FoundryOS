@@ -19,7 +19,11 @@ export const LoginView: React.FC = () => {
     try {
       await login({ email, password });
     } catch (err: any) {
-      const msg = err.response?.data?.error?.message || 'Authentication failed. Check credentials and retry.';
+      const apiMessage = err.response?.data?.error?.message;
+      const serviceUnavailable = !apiMessage && (!err.response || err.response.status >= 500);
+      const msg = serviceUnavailable
+        ? 'FoundryOS API is unavailable. Start the backend and PostgreSQL, then retry.'
+        : apiMessage || 'Authentication failed. Check credentials and retry.';
       setErrorMessage(msg);
     } finally {
       setIsLoading(false);
