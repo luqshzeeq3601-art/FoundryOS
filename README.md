@@ -10,6 +10,15 @@ Tracks machines, downtime, production batches, maintenance work orders, and OEE
 across the shop floor. Built as a Spring Boot modular monolith with a React
 frontend designed for factory-floor touchscreens.
 
+## Outcomes
+
+> In progress: these outcomes describe the current build and will gain measured results at release.
+
+- Engineered a Java 21 Spring Boot 3.3 manufacturing execution system across 10 backend modules, tracking machines, downtime, batches, and work orders from site to work center.
+- Computed OEE (availability, performance, quality), MTTR, and MTBF per line and work center from 4 categorized downtime types.
+- Secured 6 plant roles with RS256 JWTs and opaque refresh tokens, and blocked concurrent machine-state conflicts across 5 lifecycle states with optimistic locking.
+- Recorded shift handovers and configuration changes in an append-only audit log, shipped with Flyway migrations, Docker Compose, Nginx, and GitHub Actions CI.
+
 ## Stack
 
 | | |
