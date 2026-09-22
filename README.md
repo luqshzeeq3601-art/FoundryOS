@@ -14,10 +14,10 @@ frontend designed for factory-floor touchscreens.
 
 > In progress: these outcomes describe the current build and will gain measured results at release.
 
-- Engineered a Java 21 Spring Boot 3.3 manufacturing execution system across 10 backend modules, tracking machines, downtime, batches, and work orders from site to work center.
-- Computed OEE (availability, performance, quality), MTTR, and MTBF per line and work center from 4 categorized downtime types.
-- Secured 6 plant roles with RS256 JWTs and opaque refresh tokens, and blocked concurrent machine-state conflicts across 5 lifecycle states with optimistic locking.
-- Recorded shift handovers and configuration changes in an append-only audit log, shipped with Flyway migrations, Docker Compose, Nginx, and GitHub Actions CI.
+- Unified machines, downtime, batches, and maintenance work orders into one Java 21 Spring Boot 3.3 manufacturing execution system of 10 backend modules, modeled from site to work center.
+- Gave plant managers per-line OEE (availability, performance, quality), MTTR, and MTBF, calculated automatically from 4 categorized downtime types.
+- Prevented conflicting machine updates across 5 lifecycle states with optimistic locking, and restricted actions to 6 plant roles using RS256 JWTs and opaque refresh tokens.
+- Made every shift handover and configuration change traceable through an append-only audit log, verified by 162 JUnit tests and shipped with Flyway, Docker Compose, Nginx, and GitHub Actions CI.
 
 ## Stack
 
