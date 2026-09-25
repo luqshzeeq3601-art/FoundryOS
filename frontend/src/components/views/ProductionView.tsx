@@ -11,6 +11,9 @@ import {
   TransitionOrderStatusRequest 
 } from '../../types';
 import { IndustrialButton } from '../common/IndustrialButton';
+import { Banner } from '../common/Banner';
+import { ErrorState } from '../common/ErrorState';
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { IndustrialBadge } from '../common/IndustrialBadge';
 import { Modal } from '../common/Modal';
 import { BarcodeScannerModal } from '../common/BarcodeScannerModal';
@@ -24,6 +27,7 @@ export const ProductionView: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<ProductionOrderStatus | ''>('');
   const [selectedMachineFilter, setSelectedMachineFilter] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearch = useDebouncedValue(searchTerm.trim());
   const [page, setPage] = useState(0);
 
   // Modals
@@ -52,13 +56,20 @@ export const ProductionView: React.FC = () => {
   });
 
   // Fetch Production Orders
-  const { data: ordersData, isLoading } = useQuery<PagedResponse<ProductionOrderDto>>({
-    queryKey: ['production-orders', statusFilter, selectedMachineFilter, searchTerm, page],
+  const {
+    data: ordersData,
+    isLoading,
+    isError: isListError,
+    error: listError,
+    refetch: refetchList,
+    isFetching: isListFetching,
+  } = useQuery<PagedResponse<ProductionOrderDto>>({
+    queryKey: ['production-orders', statusFilter, selectedMachineFilter, debouncedSearch, page],
     queryFn: () =>
       api.get<PagedResponse<ProductionOrderDto>>('/production-orders', {
         status: statusFilter || undefined,
         machineId: selectedMachineFilter || undefined,
-        search: searchTerm || undefined,
+        search: debouncedSearch || undefined,
         page,
         size: 15,
       }),
@@ -198,7 +209,7 @@ export const ProductionView: React.FC = () => {
       {/* Header */}
       <div className="bg-substrate-card border border-substrate-border p-4 sm:p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
-          <div className="text-[11px] font-mono uppercase tracking-widest text-industrial-500">
+          <div className="text-xs font-mono uppercase tracking-widest text-industrial-500">
             [ MANUFACTURING EXECUTION // PRODUCTION RUNS ]
           </div>
           <h1 className="text-xl sm:text-2xl font-bold font-mono uppercase text-white tracking-tight flex items-center gap-2 mt-0.5">
@@ -239,12 +250,9 @@ export const ProductionView: React.FC = () => {
 
       {/* Global Error Banner */}
       {errorMessage && (
-        <div className="p-3 bg-red-950/80 border border-hazard-red text-hazard-red text-xs font-mono flex items-center justify-between">
-          <span>[ ERROR ]: {errorMessage}</span>
-          <button onClick={() => setErrorMessage(null)} className="text-white hover:underline">
-            DISMISS
-          </button>
-        </div>
+        <Banner tone="error" onDismiss={() => setErrorMessage(null)}>
+          {errorMessage}
+        </Banner>
       )}
 
       {/* Filter Bar */}
@@ -255,7 +263,11 @@ export const ProductionView: React.FC = () => {
             {(['', 'DRAFT', 'RELEASED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'] as const).map((st) => (
               <button
                 key={st}
-                onClick={() => setStatusFilter(st)}
+                onClick={() => {
+                  setStatusFilter(st);
+                  setPage(0);
+                }}
+                aria-pressed={statusFilter === st}
                 className={`px-2.5 py-1 text-xs font-mono uppercase border transition-colors whitespace-nowrap ${
                   statusFilter === st
                     ? 'bg-industrial-700 text-white border-industrial-400 font-bold'
@@ -271,7 +283,10 @@ export const ProductionView: React.FC = () => {
         <div className="flex items-center gap-2 w-full lg:w-auto">
           <select
             value={selectedMachineFilter}
-            onChange={(e) => setSelectedMachineFilter(e.target.value)}
+            onChange={(e) => {
+              setSelectedMachineFilter(e.target.value);
+              setPage(0);
+            }}
             className="bg-industrial-900 border border-substrate-border px-3 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-industrial-400 w-1/2 lg:w-48"
           >
             <option value="">ALL MACHINES</option>
@@ -285,46 +300,56 @@ export const ProductionView: React.FC = () => {
           <div className="relative w-1/2 lg:w-56">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-industrial-500" />
             <input
-              type="text"
+              type="search"
+              aria-label="Search production orders"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="SEARCH ORDERS..."
-              className="w-full bg-industrial-900 border border-substrate-border pl-9 pr-3 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-industrial-400"
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setPage(0);
+              }}
+              placeholder="Search orders"
+              className="w-full bg-industrial-900 border border-substrate-border pl-9 pr-3 min-h-[44px] text-sm text-white font-mono focus:outline-none focus:border-industrial-400"
             />
           </div>
         </div>
       </div>
 
       {/* Orders Table */}
+      {isListError && (
+        <ErrorState title="Production orders could not be loaded" error={listError} onRetry={() => refetchList()} isRetrying={isListFetching} />
+      )}
+
       <div className="bg-substrate-card border border-substrate-border overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left font-mono text-xs border-collapse">
             <thead>
               <tr className="border-b border-substrate-border bg-industrial-900 text-industrial-400 uppercase">
-                <th className="p-3">ORDER // ITEM</th>
-                <th className="p-3">ASSIGNED ASSET</th>
-                <th className="p-3">PROGRESS (GOOD / TARGET)</th>
-                <th className="p-3">SCRAP RATE</th>
-                <th className="p-3">STATUS</th>
-                <th className="p-3 text-right">CONTROLS</th>
+                <th scope="col" className="p-3">ORDER // ITEM</th>
+                <th scope="col" className="p-3">ASSIGNED ASSET</th>
+                <th scope="col" className="p-3">PROGRESS (GOOD / TARGET)</th>
+                <th scope="col" className="p-3">SCRAP RATE</th>
+                <th scope="col" className="p-3">STATUS</th>
+                <th scope="col" className="p-3 text-right">CONTROLS</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-substrate-border">
               {isLoading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <tr key={i}>
+                    <td colSpan={6} className="p-3">
+                      <div className="h-6 bg-industrial-900 animate-pulse" />
+                    </td>
+                  </tr>
+                ))
+              ) : orders.length === 0 && !isListError ? (
                 <tr>
-                  <td colSpan={6} className="p-6 text-center text-industrial-500">
-                    LOADING PRODUCTION SCHEDULE...
-                  </td>
-                </tr>
-              ) : orders.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="p-6 text-center text-industrial-500">
+                  <td colSpan={6} className="p-6 text-center text-sm text-industrial-300">
                     NO PRODUCTION ORDERS FOUND.
                   </td>
                 </tr>
               ) : (
                 orders.map((ord) => {
-                  const percent = Math.min(100, Math.round((ord.goodQuantity / ord.plannedQuantity) * 100));
+                  const percent = ord.plannedQuantity > 0 ? Math.min(100, Math.round((ord.goodQuantity / ord.plannedQuantity) * 100)) : 0;
                   const totalMade = ord.goodQuantity + ord.scrapQuantity;
                   const scrapPct = totalMade > 0 ? ((ord.scrapQuantity / totalMade) * 100).toFixed(1) : '0.0';
 
@@ -337,14 +362,14 @@ export const ProductionView: React.FC = () => {
                     >
                       <td className="p-3">
                         <div className="font-bold text-white uppercase">{ord.orderNumber}</div>
-                        <div className="text-[11px] text-industrial-300 flex items-center gap-1 mt-0.5">
+                        <div className="text-xs text-industrial-300 flex items-center gap-1 mt-0.5">
                           <Layers size={12} className="text-industrial-500" />
                           <span>{ord.productCode}</span>
                         </div>
                       </td>
                       <td className="p-3 text-industrial-200">{ord.machineName}</td>
                       <td className="p-3">
-                        <div className="flex items-center justify-between text-[11px] mb-1">
+                        <div className="flex items-center justify-between text-xs mb-1">
                           <span className="font-bold text-white">
                             {ord.goodQuantity} / {ord.plannedQuantity}
                           </span>
@@ -427,20 +452,20 @@ export const ProductionView: React.FC = () => {
                                 setSelectedOrderForScan(ord);
                                 setIsScannerOpen(true);
                               }}
-                              className="p-1.5 bg-industrial-900 border border-cyan-800 hover:border-cyan-400 text-cyan-400 hover:text-white"
-                              title="Scan Raw Material Lot for BOM Validation"
+                              className="w-11 h-11 flex items-center justify-center bg-industrial-900 border border-cyan-800 hover:border-cyan-400 text-cyan-400 hover:text-white"
+                              aria-label="Scan Raw Material Lot for BOM Validation"
                             >
-                              <Scan size={14} />
+                              <Scan size={14} aria-hidden="true" />
                             </button>
                           )}
 
                           {ord.status !== 'COMPLETED' && ord.status !== 'CANCELLED' && canManage && (
                             <button
                               onClick={() => openTransitionModal(ord, 'CANCELLED')}
-                              className="p-1.5 bg-industrial-900 border border-substrate-border hover:border-hazard-red text-industrial-400 hover:text-hazard-red"
-                              title="Cancel Order"
+                              className="w-11 h-11 flex items-center justify-center bg-industrial-900 border border-substrate-border hover:border-hazard-red text-industrial-400 hover:text-hazard-red"
+                              aria-label="Cancel Order"
                             >
-                              <XCircle size={14} />
+                              <XCircle size={14} aria-hidden="true" />
                             </button>
                           )}
                         </div>
@@ -490,10 +515,10 @@ export const ProductionView: React.FC = () => {
       >
         <form onSubmit={handleCreateSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-mono uppercase text-industrial-400 mb-1">
+            <label htmlFor="production-field-1" className="block text-xs font-mono uppercase text-industrial-400 mb-1">
               Order Number (Unique) *
             </label>
-            <input
+            <input id="production-field-1"
               type="text"
               required
               value={orderNumber}
@@ -504,10 +529,10 @@ export const ProductionView: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-mono uppercase text-industrial-400 mb-1">
+            <label htmlFor="production-field-2" className="block text-xs font-mono uppercase text-industrial-400 mb-1">
               Target Machine Line *
             </label>
-            <select
+            <select id="production-field-2"
               required
               value={machineId}
               onChange={(e) => setMachineId(e.target.value)}
@@ -523,10 +548,10 @@ export const ProductionView: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-mono uppercase text-industrial-400 mb-1">
+            <label htmlFor="production-field-3" className="block text-xs font-mono uppercase text-industrial-400 mb-1">
               Product SKU / Part Code *
             </label>
-            <input
+            <input id="production-field-3"
               type="text"
               required
               value={productCode}
@@ -537,10 +562,10 @@ export const ProductionView: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-mono uppercase text-industrial-400 mb-1">
+            <label htmlFor="production-field-4" className="block text-xs font-mono uppercase text-industrial-400 mb-1">
               Planned Output Batch Quantity *
             </label>
-            <input
+            <input id="production-field-4"
               type="number"
               min={1}
               required
@@ -551,10 +576,10 @@ export const ProductionView: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-mono uppercase text-industrial-400 mb-1">
+            <label htmlFor="production-field-5" className="block text-xs font-mono uppercase text-industrial-400 mb-1">
               Order Description / Notes
             </label>
-            <textarea
+            <textarea id="production-field-5"
               rows={2}
               value={productDescription}
               onChange={(e) => setProductDescription(e.target.value)}
@@ -699,7 +724,7 @@ export const ProductionView: React.FC = () => {
           </div>
 
           {targetStatus === 'COMPLETED' && (
-            <div className="bg-industrial-900 border border-amber-600/40 p-3 rounded text-xs font-mono text-amber-200/90 flex items-start gap-2">
+            <div className="bg-industrial-900 border border-amber-600/40 p-3 text-xs font-mono text-amber-200/90 flex items-start gap-2">
               <span className="text-amber-400 font-bold shrink-0">[QUALITY GATE]</span>
               <span>
                 Mandatory Invariant Check: Order completion requires all mandatory SOP inspection checklist steps to be completed and signed off. If quality gate is pending, transition will be rejected.
@@ -709,10 +734,10 @@ export const ProductionView: React.FC = () => {
 
           {(targetStatus === 'COMPLETED' || targetStatus === 'CANCELLED') && (
             <div>
-              <label className="block text-xs font-mono uppercase text-industrial-400 mb-1">
+              <label htmlFor="production-field-6" className="block text-xs font-mono uppercase text-industrial-400 mb-1">
                 Closure / Quality Sign-off Notes
               </label>
-              <textarea
+              <textarea id="production-field-6"
                 rows={3}
                 value={closureNote}
                 onChange={(e) => setClosureNote(e.target.value)}

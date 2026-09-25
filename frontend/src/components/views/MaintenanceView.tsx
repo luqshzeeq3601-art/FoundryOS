@@ -14,6 +14,9 @@ import {
   CancelWorkOrderRequest 
 } from '../../types';
 import { IndustrialButton } from '../common/IndustrialButton';
+import { Banner } from '../common/Banner';
+import { ErrorState } from '../common/ErrorState';
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { IndustrialBadge } from '../common/IndustrialBadge';
 import { Modal } from '../common/Modal';
 import { useAuth } from '../../context/AuthContext';
@@ -27,6 +30,7 @@ export const MaintenanceView: React.FC = () => {
   const [priorityFilter, setPriorityFilter] = useState<MaintenancePriority | ''>('');
   const [prescriptiveFilter, setPrescriptiveFilter] = useState<boolean | ''>('');
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearch = useDebouncedValue(searchTerm.trim());
   const [page, setPage] = useState(0);
 
   // Modals
@@ -61,14 +65,21 @@ export const MaintenanceView: React.FC = () => {
   });
 
   // Fetch Work Orders
-  const { data: workOrdersData, isLoading } = useQuery<PagedResponse<WorkOrderDto>>({
-    queryKey: ['maintenance-work-orders', statusFilter, priorityFilter, prescriptiveFilter, searchTerm, page],
+  const {
+    data: workOrdersData,
+    isLoading,
+    isError: isListError,
+    error: listError,
+    refetch: refetchList,
+    isFetching: isListFetching,
+  } = useQuery<PagedResponse<WorkOrderDto>>({
+    queryKey: ['maintenance-work-orders', statusFilter, priorityFilter, prescriptiveFilter, debouncedSearch, page],
     queryFn: () =>
       api.get<PagedResponse<WorkOrderDto>>('/maintenance-work-orders', {
         status: statusFilter || undefined,
         priority: priorityFilter || undefined,
         isPrescriptive: prescriptiveFilter !== '' ? prescriptiveFilter : undefined,
-        search: searchTerm || undefined,
+        search: debouncedSearch || undefined,
         page,
         size: 15,
       }),
@@ -251,7 +262,7 @@ export const MaintenanceView: React.FC = () => {
       {/* Header */}
       <div className="bg-substrate-card border border-substrate-border p-4 sm:p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
-          <div className="text-[11px] font-mono uppercase tracking-widest text-industrial-500">
+          <div className="text-xs font-mono uppercase tracking-widest text-industrial-500">
             [ MAINTENANCE, REPAIR & OVERHAUL // MRO ]
           </div>
           <h1 className="text-xl sm:text-2xl font-bold font-mono uppercase text-white tracking-tight flex items-center gap-2 mt-0.5">
@@ -277,12 +288,9 @@ export const MaintenanceView: React.FC = () => {
 
       {/* Global Error Banner */}
       {errorMessage && (
-        <div className="p-3 bg-red-950/80 border border-hazard-red text-hazard-red text-xs font-mono flex items-center justify-between">
-          <span>[ ERROR ]: {errorMessage}</span>
-          <button onClick={() => setErrorMessage(null)} className="text-white hover:underline">
-            DISMISS
-          </button>
-        </div>
+        <Banner tone="error" onDismiss={() => setErrorMessage(null)}>
+          {errorMessage}
+        </Banner>
       )}
 
       {/* Filter Bar */}
@@ -293,7 +301,11 @@ export const MaintenanceView: React.FC = () => {
             {(['', 'OPEN', 'ASSIGNED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'] as const).map((st) => (
               <button
                 key={st}
-                onClick={() => setStatusFilter(st)}
+                onClick={() => {
+                  setStatusFilter(st);
+                  setPage(0);
+                }}
+                aria-pressed={statusFilter === st}
                 className={`px-2.5 py-1 text-xs font-mono uppercase border transition-colors whitespace-nowrap ${
                   statusFilter === st
                     ? 'bg-industrial-700 text-white border-industrial-400 font-bold'
@@ -314,7 +326,7 @@ export const MaintenanceView: React.FC = () => {
                   : 'bg-industrial-900 text-industrial-400 border-substrate-border hover:text-amber-300'
               }`}
             >
-              <Zap size={12} className={prescriptiveFilter === true ? 'text-amber-400 animate-pulse' : 'text-industrial-500'} />
+              <Zap size={12} className={prescriptiveFilter === true ? 'text-amber-400' : 'text-industrial-500'} />
               <span>PRESCRIPTIVE AUTO</span>
             </button>
           </div>
@@ -323,7 +335,10 @@ export const MaintenanceView: React.FC = () => {
         <div className="flex items-center gap-2 w-full lg:w-auto">
           <select
             value={priorityFilter}
-            onChange={(e) => setPriorityFilter(e.target.value as MaintenancePriority | '')}
+            onChange={(e) => {
+              setPriorityFilter(e.target.value as MaintenancePriority | '');
+              setPage(0);
+            }}
             className="bg-industrial-900 border border-substrate-border px-3 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-industrial-400 w-1/2 lg:w-36"
           >
             <option value="">ALL PRIORITIES</option>
@@ -336,40 +351,50 @@ export const MaintenanceView: React.FC = () => {
           <div className="relative w-1/2 lg:w-56">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-industrial-500" />
             <input
-              type="text"
+              type="search"
+              aria-label="Search work orders"
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="SEARCH WORK ORDERS..."
-              className="w-full bg-industrial-900 border border-substrate-border pl-9 pr-3 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-industrial-400"
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setPage(0);
+              }}
+              placeholder="Search work orders"
+              className="w-full bg-industrial-900 border border-substrate-border pl-9 pr-3 min-h-[44px] text-sm text-white font-mono focus:outline-none focus:border-industrial-400"
             />
           </div>
         </div>
       </div>
 
       {/* Work Orders Table */}
+      {isListError && (
+        <ErrorState title="Work orders could not be loaded" error={listError} onRetry={() => refetchList()} isRetrying={isListFetching} />
+      )}
+
       <div className="bg-substrate-card border border-substrate-border overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left font-mono text-xs border-collapse">
             <thead>
               <tr className="border-b border-substrate-border bg-industrial-900 text-industrial-400 uppercase">
-                <th className="p-3">WO NUMBER // TITLE</th>
-                <th className="p-3">TARGET MACHINE</th>
-                <th className="p-3">PRIORITY</th>
-                <th className="p-3">STATUS</th>
-                <th className="p-3">ASSIGNED TECHNICIAN</th>
-                <th className="p-3 text-right">ACTIONS</th>
+                <th scope="col" className="p-3">WO NUMBER // TITLE</th>
+                <th scope="col" className="p-3">TARGET MACHINE</th>
+                <th scope="col" className="p-3">PRIORITY</th>
+                <th scope="col" className="p-3">STATUS</th>
+                <th scope="col" className="p-3">ASSIGNED TECHNICIAN</th>
+                <th scope="col" className="p-3 text-right">ACTIONS</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-substrate-border">
               {isLoading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <tr key={i}>
+                    <td colSpan={6} className="p-3">
+                      <div className="h-6 bg-industrial-900 animate-pulse" />
+                    </td>
+                  </tr>
+                ))
+              ) : workOrders.length === 0 && !isListError ? (
                 <tr>
-                  <td colSpan={6} className="p-6 text-center text-industrial-500">
-                    SCANNING WORK ORDER REPOSITORY...
-                  </td>
-                </tr>
-              ) : workOrders.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="p-6 text-center text-industrial-500">
+                  <td colSpan={6} className="p-6 text-center text-sm text-industrial-300">
                     NO MAINTENANCE WORK ORDERS FOUND.
                   </td>
                 </tr>
@@ -385,7 +410,7 @@ export const MaintenanceView: React.FC = () => {
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-white uppercase">{wo.workOrderNumber}</span>
                         {wo.isPrescriptive && (
-                          <span className="px-1.5 py-0.5 bg-amber-950/80 border border-amber-600 text-amber-300 text-[9px] font-mono font-bold uppercase rounded flex items-center gap-1">
+                          <span className="px-1.5 py-0.5 bg-amber-950/80 border border-amber-600 text-amber-300 text-xs font-mono font-bold uppercase flex items-center gap-1">
                             <Zap size={10} className="text-amber-400" />
                             <span>AUTO PRESCRIBE</span>
                           </span>
@@ -393,12 +418,12 @@ export const MaintenanceView: React.FC = () => {
                       </div>
                       <div className="text-industrial-200 mt-0.5">{wo.title}</div>
                       {wo.suspectedSubsystem && (
-                        <div className="text-[10px] text-cyan-400 font-mono flex items-center gap-1 mt-0.5">
+                        <div className="text-xs text-cyan-400 font-mono flex items-center gap-1 mt-0.5">
                           <Activity size={10} />
                           <span>SUBSYSTEM: {wo.suspectedSubsystem}</span>
                         </div>
                       )}
-                      <div className="text-[10px] text-industrial-500 truncate max-w-xs mt-0.5">
+                      <div className="text-xs text-industrial-500 truncate max-w-xs mt-0.5">
                         {wo.description}
                       </div>
                     </td>
@@ -420,7 +445,7 @@ export const MaintenanceView: React.FC = () => {
                         <span className="text-industrial-500 italic">UNASSIGNED</span>
                       )}
                       {wo.dueAt && (
-                        <div className="text-[10px] text-industrial-400 flex items-center gap-1 mt-0.5">
+                        <div className="text-xs text-industrial-400 flex items-center gap-1 mt-0.5">
                           <Calendar size={10} />
                           <span>DUE: {wo.dueAt.substring(0, 10)}</span>
                         </div>
@@ -489,7 +514,7 @@ export const MaintenanceView: React.FC = () => {
                               setCancellationNote('');
                               setErrorMessage(null);
                             }}
-                            className="p-1.5 bg-industrial-900 border border-substrate-border hover:border-hazard-red text-industrial-400 hover:text-hazard-red"
+                            className="w-11 h-11 flex items-center justify-center bg-industrial-900 border border-substrate-border hover:border-hazard-red text-industrial-400 hover:text-hazard-red"
                             title="Cancel Work Order"
                           >
                             <XCircle size={14} />
@@ -541,10 +566,10 @@ export const MaintenanceView: React.FC = () => {
       >
         <form onSubmit={handleCreateSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-mono uppercase text-industrial-400 mb-1">
+            <label htmlFor="maintenance-field-1" className="block text-xs font-mono uppercase text-industrial-400 mb-1">
               Work Order Number *
             </label>
-            <input
+            <input id="maintenance-field-1"
               type="text"
               required
               value={workOrderNumber}
@@ -555,10 +580,10 @@ export const MaintenanceView: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-mono uppercase text-industrial-400 mb-1">
+            <label htmlFor="maintenance-field-2" className="block text-xs font-mono uppercase text-industrial-400 mb-1">
               Machine Asset *
             </label>
-            <select
+            <select id="maintenance-field-2"
               required
               value={machineId}
               onChange={(e) => setMachineId(e.target.value)}
@@ -574,10 +599,10 @@ export const MaintenanceView: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-mono uppercase text-industrial-400 mb-1">
+            <label htmlFor="maintenance-field-3" className="block text-xs font-mono uppercase text-industrial-400 mb-1">
               Task Title *
             </label>
-            <input
+            <input id="maintenance-field-3"
               type="text"
               required
               value={title}
@@ -589,10 +614,10 @@ export const MaintenanceView: React.FC = () => {
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-mono uppercase text-industrial-400 mb-1">
+              <label htmlFor="maintenance-field-4" className="block text-xs font-mono uppercase text-industrial-400 mb-1">
                 Priority Level *
               </label>
-              <select
+              <select id="maintenance-field-4"
                 value={priority}
                 onChange={(e) => setPriority(e.target.value as MaintenancePriority)}
                 className="w-full bg-industrial-900 border border-substrate-border px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-industrial-400"
@@ -605,10 +630,10 @@ export const MaintenanceView: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-mono uppercase text-industrial-400 mb-1">
+              <label htmlFor="maintenance-field-5" className="block text-xs font-mono uppercase text-industrial-400 mb-1">
                 Target Due Date
               </label>
-              <input
+              <input id="maintenance-field-5"
                 type="date"
                 value={dueAt}
                 onChange={(e) => setDueAt(e.target.value)}
@@ -618,10 +643,10 @@ export const MaintenanceView: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-mono uppercase text-industrial-400 mb-1">
+            <label htmlFor="maintenance-field-6" className="block text-xs font-mono uppercase text-industrial-400 mb-1">
               Assigned Technician (Optional)
             </label>
-            <select
+            <select id="maintenance-field-6"
               value={assignedTo}
               onChange={(e) => setAssignedTo(e.target.value)}
               className="w-full bg-industrial-900 border border-substrate-border px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-industrial-400"
@@ -638,10 +663,10 @@ export const MaintenanceView: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-mono uppercase text-industrial-400 mb-1">
+            <label htmlFor="maintenance-field-7" className="block text-xs font-mono uppercase text-industrial-400 mb-1">
               Detailed Scope of Work & Procedures *
             </label>
-            <textarea
+            <textarea id="maintenance-field-7"
               rows={3}
               required
               value={description}
@@ -680,10 +705,10 @@ export const MaintenanceView: React.FC = () => {
       >
         <form onSubmit={handleAssignSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-mono uppercase text-industrial-400 mb-1">
+            <label htmlFor="maintenance-field-8" className="block text-xs font-mono uppercase text-industrial-400 mb-1">
               Select Active Technician *
             </label>
-            <select
+            <select id="maintenance-field-8"
               required
               value={assignedTo}
               onChange={(e) => setAssignedTo(e.target.value)}
@@ -729,10 +754,10 @@ export const MaintenanceView: React.FC = () => {
       >
         <form onSubmit={handleCompleteSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-mono uppercase text-industrial-400 mb-1">
+            <label htmlFor="maintenance-field-9" className="block text-xs font-mono uppercase text-industrial-400 mb-1">
               Completion Notes & Post-Repair Validation *
             </label>
-            <textarea
+            <textarea id="maintenance-field-9"
               rows={4}
               required
               value={completionNote}
@@ -772,10 +797,10 @@ export const MaintenanceView: React.FC = () => {
       >
         <form onSubmit={handleCancelSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-mono uppercase text-industrial-400 mb-1">
+            <label htmlFor="maintenance-field-10" className="block text-xs font-mono uppercase text-industrial-400 mb-1">
               Reason for Cancellation *
             </label>
-            <textarea
+            <textarea id="maintenance-field-10"
               rows={3}
               required
               value={cancellationNote}
@@ -827,25 +852,25 @@ export const MaintenanceView: React.FC = () => {
               {/* Top Banner: Anomaly & Health Score */}
               <div className="bg-industrial-950 p-4 border border-substrate-border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <div>
-                  <div className="text-[10px] text-industrial-400 uppercase">ANOMALOUS KINEMATIC DEFECT:</div>
+                  <div className="text-xs text-industrial-400 uppercase">ANOMALOUS KINEMATIC DEFECT:</div>
                   <div className="text-base font-bold text-hazard-amber flex items-center gap-1.5 mt-0.5">
                     <ShieldAlert size={16} />
                     <span>{snapshot?.dominantFault || viewingDiagnosticOrder.suspectedSubsystem || 'BEARING / ROTOR DEFECT'}</span>
                   </div>
-                  <div className="text-[10px] text-cyan-400 mt-1">
+                  <div className="text-xs text-cyan-400 mt-1">
                     SUSPECTED SUBSYSTEM: {snapshot?.suspectedSubsystem || viewingDiagnosticOrder.suspectedSubsystem || 'Drive Spindle Assembly'}
                   </div>
                 </div>
 
                 <div className="flex items-center gap-3">
                   <div className="text-right">
-                    <div className="text-[10px] text-industrial-400 uppercase">HEALTH SCORE</div>
+                    <div className="text-xs text-industrial-400 uppercase">HEALTH SCORE</div>
                     <div className={`text-2xl font-black ${snapshot && snapshot.healthScore < 40 ? 'text-hazard-red' : 'text-hazard-amber'}`}>
                       {snapshot?.healthScore ?? 50}%
                     </div>
                   </div>
                   <div className="text-right pl-3 border-l border-substrate-border">
-                    <div className="text-[10px] text-industrial-400 uppercase">ISO 10816</div>
+                    <div className="text-xs text-industrial-400 uppercase">ISO 10816</div>
                     <div className="text-lg font-bold text-white">
                       {snapshot?.isoSeverityZone || 'ZONE C'}
                     </div>
@@ -856,25 +881,25 @@ export const MaintenanceView: React.FC = () => {
               {/* Sensor Telemetry Grid */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 <div className="bg-industrial-900 border border-substrate-border p-2.5">
-                  <div className="text-[10px] text-industrial-400 uppercase">RMS VELOCITY</div>
+                  <div className="text-xs text-industrial-400 uppercase">RMS VELOCITY</div>
                   <div className="text-sm font-bold text-white mt-1">
                     {snapshot?.rmsVelocityMmS?.toFixed(2) || '4.80'} mm/s
                   </div>
                 </div>
                 <div className="bg-industrial-900 border border-substrate-border p-2.5">
-                  <div className="text-[10px] text-industrial-400 uppercase">SPINDLE TEMP</div>
+                  <div className="text-xs text-industrial-400 uppercase">SPINDLE TEMP</div>
                   <div className="text-sm font-bold text-hazard-amber mt-1">
                     {snapshot?.spindleTemperatureC ? `${snapshot.spindleTemperatureC.toFixed(1)} °C` : 'N/A'}
                   </div>
                 </div>
                 <div className="bg-industrial-900 border border-substrate-border p-2.5">
-                  <div className="text-[10px] text-industrial-400 uppercase">CREST FACTOR</div>
+                  <div className="text-xs text-industrial-400 uppercase">CREST FACTOR</div>
                   <div className="text-sm font-bold text-white mt-1">
                     {snapshot?.crestFactor?.toFixed(2) || '3.50'}
                   </div>
                 </div>
                 <div className="bg-industrial-900 border border-substrate-border p-2.5">
-                  <div className="text-[10px] text-industrial-400 uppercase">KURTOSIS</div>
+                  <div className="text-xs text-industrial-400 uppercase">KURTOSIS</div>
                   <div className="text-sm font-bold text-white mt-1">
                     {snapshot?.kurtosis?.toFixed(2) || '4.20'}
                   </div>
@@ -884,18 +909,18 @@ export const MaintenanceView: React.FC = () => {
               {/* Dominant Harmonic Peaks */}
               {snapshot?.dominantPeaks && snapshot.dominantPeaks.length > 0 && (
                 <div className="space-y-1.5">
-                  <div className="text-[10px] text-industrial-400 uppercase font-bold flex items-center gap-1.5">
+                  <div className="text-xs text-industrial-400 uppercase font-bold flex items-center gap-1.5">
                     <Activity size={12} className="text-cyan-400" />
                     IDENTIFIED SPECTRAL HARMONIC PEAKS:
                   </div>
                   <div className="border border-substrate-border overflow-hidden">
-                    <table className="w-full text-left text-[11px]">
-                      <thead className="bg-industrial-900 border-b border-substrate-border text-[9px] text-industrial-400 uppercase">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-industrial-900 border-b border-substrate-border text-xs text-industrial-400 uppercase">
                         <tr>
-                          <th className="p-1.5">FREQ (HZ)</th>
-                          <th className="p-1.5">AMPLITUDE</th>
-                          <th className="p-1.5">HARMONIC CLASSIFICATION</th>
-                          <th className="p-1.5 text-right">CONFIDENCE</th>
+                          <th scope="col" className="p-1.5">FREQ (HZ)</th>
+                          <th scope="col" className="p-1.5">AMPLITUDE</th>
+                          <th scope="col" className="p-1.5">HARMONIC CLASSIFICATION</th>
+                          <th scope="col" className="p-1.5 text-right">CONFIDENCE</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-substrate-border">
@@ -915,7 +940,7 @@ export const MaintenanceView: React.FC = () => {
 
               {/* Recommended Spare Parts */}
               <div className="bg-industrial-900/80 border border-substrate-border p-3 space-y-1.5">
-                <div className="text-[10px] text-terminal-cyan uppercase font-bold flex items-center gap-1.5">
+                <div className="text-xs text-terminal-cyan uppercase font-bold flex items-center gap-1.5">
                   <Wrench size={12} />
                   RECOMMENDED SPARE PARTS & TOOLING:
                 </div>
@@ -926,7 +951,7 @@ export const MaintenanceView: React.FC = () => {
 
               {/* Prescriptive Guidance */}
               <div className="bg-industrial-900/80 border border-substrate-border p-3 space-y-1.5">
-                <div className="text-[10px] text-hazard-amber uppercase font-bold flex items-center gap-1.5">
+                <div className="text-xs text-hazard-amber uppercase font-bold flex items-center gap-1.5">
                   <Zap size={12} />
                   PRESCRIPTIVE ACTION GUIDANCE:
                 </div>

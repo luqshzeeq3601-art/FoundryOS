@@ -3,21 +3,31 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '../../services/api-client';
 import { AuditDto, PagedResponse } from '../../types';
 import { IndustrialButton } from '../common/IndustrialButton';
+import { ErrorState } from '../common/ErrorState';
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { IndustrialBadge } from '../common/IndustrialBadge';
 import { ShieldCheck, Search, ChevronDown, ChevronRight, Hash, Clock, FileJson } from 'lucide-react';
 
 export const AuditLogView: React.FC = () => {
   const [entityTypeFilter, setEntityTypeFilter] = useState('');
   const [actionSearch, setActionSearch] = useState('');
+  const debouncedSearch = useDebouncedValue(actionSearch.trim());
   const [page, setPage] = useState(0);
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
 
-  const { data: auditData, isLoading } = useQuery<PagedResponse<AuditDto>>({
-    queryKey: ['audit-events', entityTypeFilter, actionSearch, page],
+  const {
+    data: auditData,
+    isLoading,
+    isError: isListError,
+    error: listError,
+    refetch: refetchList,
+    isFetching: isListFetching,
+  } = useQuery<PagedResponse<AuditDto>>({
+    queryKey: ['audit-events', entityTypeFilter, debouncedSearch, page],
     queryFn: () =>
       api.get<PagedResponse<AuditDto>>('/audit-events', {
         entityType: entityTypeFilter || undefined,
-        action: actionSearch || undefined,
+        action: debouncedSearch || undefined,
         page,
         size: 20,
       }),
@@ -44,7 +54,7 @@ export const AuditLogView: React.FC = () => {
       {/* Header */}
       <div className="bg-substrate-card border border-substrate-border p-4 sm:p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
-          <div className="text-[11px] font-mono uppercase tracking-widest text-industrial-500">
+          <div className="text-xs font-mono uppercase tracking-widest text-industrial-500">
             [ COMPLIANCE & GOVERNANCE // IMMUTABLE TRACE ]
           </div>
           <h1 className="text-xl sm:text-2xl font-bold font-mono uppercase text-white tracking-tight flex items-center gap-2 mt-0.5">
@@ -60,7 +70,10 @@ export const AuditLogView: React.FC = () => {
           <span className="text-xs font-mono uppercase text-industrial-400 shrink-0">ENTITY:</span>
           <select
             value={entityTypeFilter}
-            onChange={(e) => setEntityTypeFilter(e.target.value)}
+            onChange={(e) => {
+              setEntityTypeFilter(e.target.value);
+              setPage(0);
+            }}
             className="bg-industrial-900 border border-substrate-border px-3 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-industrial-400 w-full sm:w-56"
           >
             <option value="">ALL DOMAIN ENTITIES</option>
@@ -75,39 +88,49 @@ export const AuditLogView: React.FC = () => {
         <div className="relative w-full sm:w-72">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-industrial-500" />
           <input
-            type="text"
+            type="search"
+            aria-label="Filter by action"
             value={actionSearch}
-            onChange={(e) => setActionSearch(e.target.value)}
-            placeholder="FILTER ACTION (E.G. CREATED, UPDATED)..."
-            className="w-full bg-industrial-900 border border-substrate-border pl-9 pr-3 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-industrial-400"
+            onChange={(e) => {
+              setActionSearch(e.target.value);
+              setPage(0);
+            }}
+            placeholder="Action, e.g. CREATED"
+            className="w-full bg-industrial-900 border border-substrate-border pl-9 pr-3 min-h-[44px] text-sm text-white font-mono focus:outline-none focus:border-industrial-400"
           />
         </div>
       </div>
 
       {/* Audit Event Stream */}
+      {isListError && (
+        <ErrorState title="Audit events could not be loaded" error={listError} onRetry={() => refetchList()} isRetrying={isListFetching} />
+      )}
+
       <div className="bg-substrate-card border border-substrate-border overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left font-mono text-xs border-collapse">
             <thead>
               <tr className="border-b border-substrate-border bg-industrial-900 text-industrial-400 uppercase">
-                <th className="p-3 w-8"></th>
-                <th className="p-3">TIMESTAMP (UTC)</th>
-                <th className="p-3">ACTION EVENT</th>
-                <th className="p-3">ENTITY TYPE // ID</th>
-                <th className="p-3">TRACE ID</th>
-                <th className="p-3 text-right">STATE DIFF</th>
+                <th scope="col" className="p-3 w-8"><span className="sr-only">Details</span></th>
+                <th scope="col" className="p-3">TIMESTAMP (UTC)</th>
+                <th scope="col" className="p-3">ACTION EVENT</th>
+                <th scope="col" className="p-3">ENTITY TYPE // ID</th>
+                <th scope="col" className="p-3">TRACE ID</th>
+                <th scope="col" className="p-3 text-right">STATE DIFF</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-substrate-border">
               {isLoading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <tr key={i}>
+                    <td colSpan={6} className="p-3">
+                      <div className="h-6 bg-industrial-900 animate-pulse" />
+                    </td>
+                  </tr>
+                ))
+              ) : events.length === 0 && !isListError ? (
                 <tr>
-                  <td colSpan={6} className="p-6 text-center text-industrial-500">
-                    RETRIEVING IMMUTABLE AUDIT LOGS...
-                  </td>
-                </tr>
-              ) : events.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="p-6 text-center text-industrial-500">
+                  <td colSpan={6} className="p-6 text-center text-sm text-industrial-300">
                     NO AUDIT EVENTS FOUND.
                   </td>
                 </tr>
@@ -119,18 +142,30 @@ export const AuditLogView: React.FC = () => {
                   return (
                     <React.Fragment key={ev.id}>
                       <tr
-                        className={`hover:bg-industrial-900/60 transition-colors cursor-pointer ${
+                        className={`hover:bg-industrial-900/60 transition-colors ${hasPayload ? 'cursor-pointer' : ''} ${
                           isExpanded ? 'bg-industrial-900/80' : ''
                         }`}
                         onClick={() => hasPayload && toggleRow(ev.id)}
                       >
-                        <td className="p-3 text-industrial-500">
+                        <td className="p-1 text-industrial-400">
                           {hasPayload ? (
-                            isExpanded ? (
-                              <ChevronDown size={14} className="text-white" />
-                            ) : (
-                              <ChevronRight size={14} />
-                            )
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleRow(ev.id);
+                              }}
+                              aria-expanded={isExpanded}
+                              aria-controls={`audit-diff-${ev.id}`}
+                              aria-label={`${isExpanded ? 'Hide' : 'Show'} changes for ${ev.action} on ${ev.entityType}`}
+                              className="w-11 h-11 flex items-center justify-center hover:text-white"
+                            >
+                              {isExpanded ? (
+                                <ChevronDown size={14} className="text-white" aria-hidden="true" />
+                              ) : (
+                                <ChevronRight size={14} aria-hidden="true" />
+                              )}
+                            </button>
                           ) : null}
                         </td>
                         <td className="p-3 text-industrial-300 flex items-center gap-1.5 whitespace-nowrap">
@@ -152,47 +187,47 @@ export const AuditLogView: React.FC = () => {
                         </td>
                         <td className="p-3">
                           <span className="font-bold text-white">{ev.entityType}</span>
-                          <span className="text-industrial-500 text-[10px] ml-1.5">
+                          <span className="text-industrial-500 text-xs ml-1.5">
                             ({ev.entityId.substring(0, 8)}...)
                           </span>
                         </td>
-                        <td className="p-3 text-industrial-500 text-[10px] flex items-center gap-1">
+                        <td className="p-3 text-industrial-500 text-xs flex items-center gap-1">
                           <Hash size={10} />
                           <span>{ev.traceId.substring(0, 16)}</span>
                         </td>
                         <td className="p-3 text-right">
                           {hasPayload ? (
-                            <span className="text-[10px] text-terminal-cyan flex items-center justify-end gap-1">
+                            <span className="text-xs text-terminal-cyan flex items-center justify-end gap-1">
                               <FileJson size={12} />
                               <span>{isExpanded ? 'HIDE DIFF' : 'VIEW DIFF'}</span>
                             </span>
                           ) : (
-                            <span className="text-industrial-600 text-[10px]">NO PAYLOAD</span>
+                            <span className="text-industrial-600 text-xs">NO PAYLOAD</span>
                           )}
                         </td>
                       </tr>
 
                       {/* Expandable JSON State Viewer */}
                       {isExpanded && hasPayload && (
-                        <tr>
+                        <tr id={`audit-diff-${ev.id}`}>
                           <td colSpan={6} className="p-4 bg-black border-y border-substrate-border">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               {/* Before State */}
                               <div>
-                                <div className="text-[10px] font-mono text-hazard-amber uppercase mb-1 flex items-center gap-1">
+                                <div className="text-xs font-mono text-hazard-amber uppercase mb-1 flex items-center gap-1">
                                   <span>[ BEFORE STATE ]</span>
                                 </div>
-                                <pre className="p-3 bg-industrial-950 border border-substrate-border text-industrial-300 text-[11px] overflow-x-auto">
+                                <pre className="p-3 bg-industrial-950 border border-substrate-border text-industrial-300 text-xs overflow-x-auto">
                                   {formatJson(ev.beforeData) || 'null (No previous state)'}
                                 </pre>
                               </div>
 
                               {/* After State */}
                               <div>
-                                <div className="text-[10px] font-mono text-terminal-green uppercase mb-1 flex items-center gap-1">
+                                <div className="text-xs font-mono text-terminal-green uppercase mb-1 flex items-center gap-1">
                                   <span>[ AFTER STATE ]</span>
                                 </div>
-                                <pre className="p-3 bg-industrial-950 border border-substrate-border text-industrial-200 text-[11px] overflow-x-auto">
+                                <pre className="p-3 bg-industrial-950 border border-substrate-border text-industrial-200 text-xs overflow-x-auto">
                                   {formatJson(ev.afterData) || 'null'}
                                 </pre>
                               </div>

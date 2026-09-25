@@ -50,18 +50,18 @@ export const MetricTile: React.FC<MetricTileProps> = ({
   return (
     <div className={`relative p-4 border ${getStatusBorder()} ${className} flex flex-col justify-between`}>
       {/* Tactical Corner Crosshairs */}
-      <span className="absolute top-0 left-0 text-[10px] leading-none text-industrial-600 select-none">+</span>
-      <span className="absolute top-0 right-0 text-[10px] leading-none text-industrial-600 select-none">+</span>
-      <span className="absolute bottom-0 left-0 text-[10px] leading-none text-industrial-600 select-none">+</span>
-      <span className="absolute bottom-0 right-0 text-[10px] leading-none text-industrial-600 select-none">+</span>
+      <span className="absolute top-0 left-0 text-xs leading-none text-industrial-600 select-none">+</span>
+      <span className="absolute top-0 right-0 text-xs leading-none text-industrial-600 select-none">+</span>
+      <span className="absolute bottom-0 left-0 text-xs leading-none text-industrial-600 select-none">+</span>
+      <span className="absolute bottom-0 right-0 text-xs leading-none text-industrial-600 select-none">+</span>
 
       {/* Header */}
       <div className="flex items-center justify-between gap-2 mb-2">
-        <span className="text-[11px] font-mono uppercase tracking-widest text-industrial-400 truncate">
+        <span className="text-xs font-mono uppercase tracking-widest text-industrial-400 truncate">
           {label}
         </span>
         {tag && (
-          <span className="text-[10px] font-mono text-industrial-500 uppercase px-1 border border-industrial-700/60 bg-industrial-900 shrink-0">
+          <span className="text-xs font-mono text-industrial-500 uppercase px-1 border border-industrial-700/60 bg-industrial-900 shrink-0">
             {tag}
           </span>
         )}
@@ -81,7 +81,7 @@ export const MetricTile: React.FC<MetricTileProps> = ({
 
       {/* Subtext */}
       {subtext && (
-        <div className="mt-2 text-[11px] font-mono text-industrial-400 truncate border-t border-substrate-border pt-1.5">
+        <div className="mt-2 text-xs font-mono text-industrial-400 truncate border-t border-substrate-border pt-1.5">
           {subtext}
         </div>
       )}

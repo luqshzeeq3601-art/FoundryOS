@@ -1,13 +1,14 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { UserDto, LoginRequest, LoginResponse, PlantDto } from '../types';
-import { 
-  api, 
-  setStoredAccessToken, 
-  getStoredAccessToken, 
-  setStoredActivePlantId, 
+import {
+  api,
+  setStoredAccessToken,
+  getStoredAccessToken,
+  setStoredActivePlantId,
   getStoredActivePlantId,
   hierarchyApi,
-  authApi
+  authApi,
+  refreshAccessToken
 } from '../services/api-client';
 
 interface AuthContextType {
@@ -83,12 +84,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, [fetchPlants]);
 
   useEffect(() => {
-    const token = getStoredAccessToken();
-    if (token) {
-      fetchProfile();
-    } else {
-      setIsLoading(false);
-    }
+    // Restore the session from the HttpOnly refresh cookie; no token is persisted client-side.
+    const restoreSession = async () => {
+      if (!getStoredAccessToken()) {
+        try {
+          await refreshAccessToken();
+        } catch {
+          setIsLoading(false);
+          return;
+        }
+      }
+      await fetchProfile();
+    };
+    restoreSession();
 
     const handleUnauthorized = () => {
       setUser(null);

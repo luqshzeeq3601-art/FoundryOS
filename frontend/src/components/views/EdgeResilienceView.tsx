@@ -9,6 +9,9 @@ import {
   SimulateDisconnectRequestDto
 } from '../../types';
 import { IndustrialCard } from '../common/IndustrialCard';
+import { TEST_TOOLS_ENABLED } from '../../config/features';
+import { Banner } from '../common/Banner';
+import { getErrorMessage } from '../../utils/errors';
 import { IndustrialBadge } from '../common/IndustrialBadge';
 import { MetricTile } from '../common/MetricTile';
 import { StatusBeacon } from '../common/StatusBeacon';
@@ -36,6 +39,7 @@ export const EdgeResilienceView: React.FC = () => {
   const [manifestModalOpen, setManifestModalOpen] = useState(false);
   const [cachedManifest, setCachedManifest] = useState<EdgeOfflineCacheManifestDto | null>(null);
   const [rehearsalLoading, setRehearsalLoading] = useState(false);
+  const [edgeError, setEdgeError] = useState<string | null>(null);
   const [simulationResult, setSimulationResult] = useState<EdgeSyncBatchResultDto | null>(null);
   const [replayTested, setReplayTested] = useState(false);
 
@@ -73,7 +77,7 @@ export const EdgeResilienceView: React.FC = () => {
       setCachedManifest(manifest);
       setManifestModalOpen(true);
     } catch (err) {
-      console.error('Failed to load edge manifest:', err);
+      setEdgeError(`Offline cache manifest could not be loaded. ${getErrorMessage(err)}`);
     }
   };
 
@@ -107,7 +111,7 @@ export const EdgeResilienceView: React.FC = () => {
       refetchBatches();
       refetchTxs();
     } catch (err) {
-      console.error('Error during rehearsal:', err);
+      setEdgeError(`Drill failed. ${getErrorMessage(err)}`);
     } finally {
       setRehearsalLoading(false);
     }
@@ -133,7 +137,7 @@ export const EdgeResilienceView: React.FC = () => {
       refetchBatches();
       refetchTxs();
     } catch (err) {
-      console.error('Error testing replay:', err);
+      setEdgeError(`Replay test failed. ${getErrorMessage(err)}`);
     } finally {
       setRehearsalLoading(false);
     }
@@ -150,10 +154,7 @@ export const EdgeResilienceView: React.FC = () => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-substrate-border pb-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-mono bg-hazard-red text-white px-2 py-0.5 font-bold tracking-widest uppercase">
-              EPIC 5 // STORY 3
-            </span>
-            <span className="text-[10px] font-mono text-industrial-400">
+            <span className="text-xs font-mono text-industrial-400">
               STORE-AND-FORWARD RESILIENCE ENGINE
             </span>
           </div>
@@ -176,6 +177,12 @@ export const EdgeResilienceView: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {edgeError && (
+        <Banner tone="error" onDismiss={() => setEdgeError(null)}>
+          {edgeError}
+        </Banner>
+      )}
 
       {/* Top Metrics Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -244,7 +251,7 @@ export const EdgeResilienceView: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="text-right font-mono text-[10px] text-industrial-400">
+                  <div className="text-right font-mono text-xs text-industrial-400">
                     <div>FW: <span className="text-industrial-200">{gw.firmwareVersion}</span></div>
                     <div>IP: <span className="text-industrial-200">{gw.ipAddress || '10.20.1.50'}</span></div>
                   </div>
@@ -261,7 +268,7 @@ export const EdgeResilienceView: React.FC = () => {
                   <div className="w-full bg-industrial-950 h-2 border border-substrate-border overflow-hidden">
                     <div className="bg-emerald-500 h-full w-[2%]" />
                   </div>
-                  <div className="flex justify-between text-[11px] font-mono text-industrial-400">
+                  <div className="flex justify-between text-xs font-mono text-industrial-400">
                     <span>MONOTONIC SEQ: <span className="text-industrial-200">#{gw.lastSyncSequenceId}</span></span>
                     <span>LAST SYNC: <span className="text-industrial-200">{gw.lastSyncAt ? new Date(gw.lastSyncAt).toLocaleTimeString() : 'JUST NOW'}</span></span>
                   </div>
@@ -304,6 +311,8 @@ export const EdgeResilienceView: React.FC = () => {
         </div>
       </div>
 
+      {TEST_TOOLS_ENABLED && (
+      <>
       {/* 4-Hour WAN Disconnect Rehearsal Simulator */}
       <IndustrialCard className="p-5 border-industrial-600 bg-industrial-900/40">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-substrate-border pb-3">
@@ -326,10 +335,10 @@ export const EdgeResilienceView: React.FC = () => {
         {/* Configuration inputs */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3 mt-4">
           <div className="space-y-1">
-            <label className="text-[10px] font-mono text-industrial-400 uppercase">OFFLINE DURATION</label>
+            <label htmlFor="edge-drill-field-1" className="text-xs font-mono text-industrial-400 uppercase">OFFLINE DURATION</label>
             <div className="flex items-center gap-1 bg-industrial-950 border border-substrate-border px-2 py-1 text-xs font-mono text-white">
               <Clock size={12} className="text-industrial-400" />
-              <input
+              <input id="edge-drill-field-1"
                 type="number"
                 value={simDurationHours}
                 onChange={(e) => setSimDurationHours(Number(e.target.value))}
@@ -343,10 +352,10 @@ export const EdgeResilienceView: React.FC = () => {
           </div>
 
           <div className="space-y-1">
-            <label className="text-[10px] font-mono text-industrial-400 uppercase">GOOD PARTS</label>
+            <label htmlFor="edge-drill-field-2" className="text-xs font-mono text-industrial-400 uppercase">GOOD PARTS</label>
             <div className="flex items-center gap-1 bg-industrial-950 border border-substrate-border px-2 py-1 text-xs font-mono text-white">
               <Cpu size={12} className="text-emerald-400" />
-              <input
+              <input id="edge-drill-field-2"
                 type="number"
                 value={simGoodParts}
                 onChange={(e) => setSimGoodParts(Number(e.target.value))}
@@ -358,10 +367,10 @@ export const EdgeResilienceView: React.FC = () => {
           </div>
 
           <div className="space-y-1">
-            <label className="text-[10px] font-mono text-industrial-400 uppercase">SCRAP PARTS</label>
+            <label htmlFor="edge-drill-field-3" className="text-xs font-mono text-industrial-400 uppercase">SCRAP PARTS</label>
             <div className="flex items-center gap-1 bg-industrial-950 border border-substrate-border px-2 py-1 text-xs font-mono text-white">
               <AlertTriangle size={12} className="text-amber-400" />
-              <input
+              <input id="edge-drill-field-3"
                 type="number"
                 value={simScrapParts}
                 onChange={(e) => setSimScrapParts(Number(e.target.value))}
@@ -373,10 +382,10 @@ export const EdgeResilienceView: React.FC = () => {
           </div>
 
           <div className="space-y-1">
-            <label className="text-[10px] font-mono text-industrial-400 uppercase">BARCODE SCANS</label>
+            <label htmlFor="edge-drill-field-4" className="text-xs font-mono text-industrial-400 uppercase">BARCODE SCANS</label>
             <div className="flex items-center gap-1 bg-industrial-950 border border-substrate-border px-2 py-1 text-xs font-mono text-white">
               <Barcode size={12} className="text-blue-400" />
-              <input
+              <input id="edge-drill-field-4"
                 type="number"
                 value={simBarcodeScans}
                 onChange={(e) => setSimBarcodeScans(Number(e.target.value))}
@@ -388,10 +397,10 @@ export const EdgeResilienceView: React.FC = () => {
           </div>
 
           <div className="space-y-1">
-            <label className="text-[10px] font-mono text-industrial-400 uppercase">DOWNTIME DURATION</label>
+            <label htmlFor="edge-drill-field-5" className="text-xs font-mono text-industrial-400 uppercase">DOWNTIME DURATION</label>
             <div className="flex items-center gap-1 bg-industrial-950 border border-substrate-border px-2 py-1 text-xs font-mono text-white">
               <Clock size={12} className="text-hazard-red" />
-              <input
+              <input id="edge-drill-field-5"
                 type="number"
                 value={simDowntimeMins}
                 onChange={(e) => setSimDowntimeMins(Number(e.target.value))}
@@ -403,13 +412,13 @@ export const EdgeResilienceView: React.FC = () => {
           </div>
 
           <div className="space-y-1">
-            <label className="text-[10px] font-mono text-industrial-400 uppercase">DOWNTIME REASON</label>
+            <label htmlFor="edge-drill-field-6" className="text-xs font-mono text-industrial-400 uppercase">DOWNTIME REASON</label>
             <div className="flex items-center gap-1 bg-industrial-950 border border-substrate-border px-2 py-1 text-xs font-mono text-white">
               <Clock size={12} className="text-hazard-red" />
-              <select
+              <select id="edge-drill-field-6"
                 value={simDowntimeReason}
                 onChange={(e) => setSimDowntimeReason(e.target.value)}
-                className="bg-transparent w-full text-white outline-none text-[11px]"
+                className="bg-transparent w-full text-white outline-none text-xs"
               >
                 <option value="Tooling Spindle Overheat" className="bg-industrial-950">Spindle Overheat</option>
                 <option value="Feeder Jam" className="bg-industrial-950">Feeder Jam</option>
@@ -455,24 +464,24 @@ export const EdgeResilienceView: React.FC = () => {
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
               <div className="p-3 bg-industrial-900 border border-substrate-border">
-                <div className="text-[10px] font-mono text-industrial-400">PART COUNT LOSS</div>
+                <div className="text-xs font-mono text-industrial-400">PART COUNT LOSS</div>
                 <div className="text-xl font-mono font-bold text-emerald-400">0.00%</div>
-                <div className="text-[9px] font-mono text-industrial-400">Zero-Loss Invariant Verified</div>
+                <div className="text-xs font-mono text-industrial-400">Zero-Loss Invariant Verified</div>
               </div>
               <div className="p-3 bg-industrial-900 border border-substrate-border">
-                <div className="text-[10px] font-mono text-industrial-400">RECONCILED RECORDS</div>
+                <div className="text-xs font-mono text-industrial-400">RECONCILED RECORDS</div>
                 <div className="text-xl font-mono font-bold text-white">{simulationResult.processedRecords}</div>
-                <div className="text-[9px] font-mono text-industrial-400">Additive Deltas Committed</div>
+                <div className="text-xs font-mono text-industrial-400">Additive Deltas Committed</div>
               </div>
               <div className="p-3 bg-industrial-900 border border-substrate-border">
-                <div className="text-[10px] font-mono text-industrial-400">DUPLICATES IGNORED</div>
+                <div className="text-xs font-mono text-industrial-400">DUPLICATES IGNORED</div>
                 <div className="text-xl font-mono font-bold text-amber-400">{simulationResult.duplicateIgnoredRecords}</div>
-                <div className="text-[9px] font-mono text-industrial-400">Idempotency Guaranteed</div>
+                <div className="text-xs font-mono text-industrial-400">Idempotency Guaranteed</div>
               </div>
               <div className="p-3 bg-industrial-900 border border-substrate-border">
-                <div className="text-[10px] font-mono text-industrial-400">DOWNTIME PRESERVED</div>
+                <div className="text-xs font-mono text-industrial-400">DOWNTIME PRESERVED</div>
                 <div className="text-xl font-mono font-bold text-blue-400">{simDowntimeMins} MINS</div>
-                <div className="text-[9px] font-mono text-industrial-400">Exact Timeline Restored</div>
+                <div className="text-xs font-mono text-industrial-400">Exact Timeline Restored</div>
               </div>
             </div>
 
@@ -491,6 +500,8 @@ export const EdgeResilienceView: React.FC = () => {
           </div>
         )}
       </IndustrialCard>
+      </>
+      )}
 
       {/* Sync Batches & Transaction Ledger Tabs */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -503,7 +514,7 @@ export const EdgeResilienceView: React.FC = () => {
                 RECENT SYNC BATCHES
               </h3>
             </div>
-            <span className="text-[10px] font-mono text-industrial-400">
+            <span className="text-xs font-mono text-industrial-400">
               TOP {recentBatches.length}
             </span>
           </div>
@@ -524,11 +535,11 @@ export const EdgeResilienceView: React.FC = () => {
                       {batch.syncStatus}
                     </IndustrialBadge>
                   </div>
-                  <div className="flex justify-between text-[11px] font-mono text-industrial-400">
+                  <div className="flex justify-between text-xs font-mono text-industrial-400">
                     <span>NODE: {batch.gatewayCode || 'EDGE-GW'}</span>
                     <span>{batch.totalRecords} RECORDS</span>
                   </div>
-                  <div className="text-[10px] font-mono text-industrial-500 truncate">
+                  <div className="text-xs font-mono text-industrial-500 truncate">
                     {batch.reconciliationNotes || 'Reconciled successfully'}
                   </div>
                 </div>
@@ -546,7 +557,7 @@ export const EdgeResilienceView: React.FC = () => {
                 SYNCHRONIZED TRANSACTION LEDGER (IDEMPOTENT STREAM)
               </h3>
             </div>
-            <span className="text-[10px] font-mono text-industrial-400">
+            <span className="text-xs font-mono text-industrial-400">
               IMMUTABLE AUDIT RECORD
             </span>
           </div>
@@ -567,18 +578,18 @@ export const EdgeResilienceView: React.FC = () => {
                 {recentTransactions.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="py-8 text-center text-industrial-500">
-                      NO TRANSACTIONS LOGGED. EXECUTE A 4-HOUR REHEARSAL DRILL ABOVE TO VIEW SYNC ACTIVITY.
+                      No sync transactions yet. Gateways report here after they reconnect and replay buffered data.
                     </td>
                   </tr>
                 ) : (
                   recentTransactions.map((tx: EdgeTransactionLogDto) => (
                     <tr key={tx.id} className="hover:bg-industrial-900/50">
                       <td className="py-2 px-2 font-bold text-white">#{tx.sequenceId}</td>
-                      <td className="py-2 px-2 text-industrial-300 font-mono text-[11px] truncate max-w-[140px]" title={tx.idempotencyKey}>
+                      <td className="py-2 px-2 text-industrial-300 font-mono text-xs truncate max-w-[140px]" title={tx.idempotencyKey}>
                         {tx.idempotencyKey}
                       </td>
                       <td className="py-2 px-2">
-                        <span className="px-1.5 py-0.5 bg-industrial-800 text-industrial-300 text-[10px]">
+                        <span className="px-1.5 py-0.5 bg-industrial-800 text-industrial-300 text-xs">
                           {tx.transactionType}
                         </span>
                       </td>
@@ -587,10 +598,10 @@ export const EdgeResilienceView: React.FC = () => {
                           {tx.executionStatus}
                         </IndustrialBadge>
                       </td>
-                      <td className="py-2 px-2 text-[10px] text-industrial-400 whitespace-nowrap">
+                      <td className="py-2 px-2 text-xs text-industrial-400 whitespace-nowrap">
                         {tx.syncedAt ? new Date(tx.syncedAt).toLocaleTimeString() : '-'}
                       </td>
-                      <td className="py-2 px-2 text-[10px] text-industrial-400 truncate max-w-[180px]" title={tx.conflictResolutionNote || ''}>
+                      <td className="py-2 px-2 text-xs text-industrial-400 truncate max-w-[180px]" title={tx.conflictResolutionNote || ''}>
                         {tx.conflictResolutionNote || '-'}
                       </td>
                     </tr>
@@ -635,11 +646,11 @@ export const EdgeResilienceView: React.FC = () => {
                     <div key={o.id} className="p-2.5 flex justify-between items-center">
                       <div>
                         <div className="font-bold text-white">{o.orderNumber}</div>
-                        <div className="text-[10px] text-industrial-400">{o.productCode} - {o.productName}</div>
+                        <div className="text-xs text-industrial-400">{o.productCode} - {o.productName}</div>
                       </div>
                       <div className="text-right">
                         <div className="text-emerald-400 font-bold">{o.goodQuantity} / {o.targetQuantity}</div>
-                        <div className="text-[10px] text-industrial-500">MACHINE: {o.machineCode || 'MCH-01'}</div>
+                        <div className="text-xs text-industrial-500">MACHINE: {o.machineCode || 'MCH-01'}</div>
                       </div>
                     </div>
                   ))
@@ -657,8 +668,8 @@ export const EdgeResilienceView: React.FC = () => {
                 {cachedManifest.machines.map((m) => (
                   <div key={m.id} className="p-2 bg-industrial-950 border border-substrate-border">
                     <div className="font-bold text-white">{m.machineCode}</div>
-                    <div className="text-[10px] text-industrial-400">{m.name}</div>
-                    <div className="text-[10px] text-emerald-400 mt-1">STATUS: {m.status}</div>
+                    <div className="text-xs text-industrial-400">{m.name}</div>
+                    <div className="text-xs text-emerald-400 mt-1">STATUS: {m.status}</div>
                   </div>
                 ))}
               </div>

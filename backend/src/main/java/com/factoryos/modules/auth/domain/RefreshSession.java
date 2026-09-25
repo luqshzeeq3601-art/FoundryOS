@@ -19,7 +19,7 @@ public class RefreshSession {
     @Column(name = "family_id", nullable = false)
     private UUID familyId;
 
-    @Column(name = "token_hash", nullable = false, unique = true, length = 64)
+    @Column(name = "token_hash", nullable = false, unique = true, length = 64, columnDefinition = "bpchar")
     private String tokenHash;
 
     @Column(name = "expires_at", nullable = false)

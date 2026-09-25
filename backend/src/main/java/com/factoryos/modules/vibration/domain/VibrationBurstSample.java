@@ -52,7 +52,7 @@ public class VibrationBurstSample {
     @Column(name = "bearing_temperature_c")
     private Double bearingTemperatureC;
 
-    @Column(name = "raw_samples", columnDefinition = "TEXT")
+    @Column(name = "raw_samples", columnDefinition = "jsonb")
     private String rawSamplesJson;
 
     @OneToMany(mappedBy = "burst", cascade = CascadeType.ALL, orphanRemoval = true)

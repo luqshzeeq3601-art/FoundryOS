@@ -68,7 +68,7 @@ public class MaintenanceWorkOrder {
     @Column(name = "health_assessment_id")
     private UUID healthAssessmentId;
 
-    @Column(name = "diagnostic_snapshot", columnDefinition = "TEXT")
+    @Column(name = "diagnostic_snapshot", columnDefinition = "jsonb")
     private String diagnosticSnapshot;
 
     @Column(name = "suspected_subsystem", length = 128)

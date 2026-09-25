@@ -20,6 +20,9 @@ import {
 } from 'lucide-react';
 import { enterpriseAnalyticsApi } from '../../services/api-client';
 import { EnterpriseOeeMatrixDto } from '../../types';
+import { ErrorState } from '../common/ErrorState';
+import { Banner } from '../common/Banner';
+import { getErrorMessage } from '../../utils/errors';
 
 export const EnterpriseFleetAnalyticsView: React.FC = () => {
   const [selectedInterval, setSelectedInterval] = useState<string>('24H');
@@ -27,9 +30,9 @@ export const EnterpriseFleetAnalyticsView: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [expandedPlantIds, setExpandedPlantIds] = useState<Set<string>>(new Set());
   const [exportLoading, setExportLoading] = useState<'csv' | 'pdf' | null>(null);
-  const [reportSuccessMsg, setReportSuccessMsg] = useState<string | null>(null);
+  const [reportMsg, setReportMsg] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
 
-  const { data: matrix, isLoading, refetch, isFetching } = useQuery<EnterpriseOeeMatrixDto>({
+  const { data: matrix, isLoading, refetch, isFetching, isError, error } = useQuery<EnterpriseOeeMatrixDto>({
     queryKey: ['enterprise-oee-matrix', selectedInterval, statusFilter],
     queryFn: () => enterpriseAnalyticsApi.getOeeMatrix({
       interval: selectedInterval,
@@ -41,12 +44,10 @@ export const EnterpriseFleetAnalyticsView: React.FC = () => {
   const scheduledReportMutation = useMutation({
     mutationFn: (format: 'CSV' | 'PDF') => enterpriseAnalyticsApi.triggerScheduledReport(format, selectedInterval),
     onSuccess: (data) => {
-      setReportSuccessMsg(`REPORT DISPATCHED: ${data.message} (ID: ${data.reportId.slice(0, 8)}, Size: ${data.fileSizeBytes} B)`);
-      setTimeout(() => setReportSuccessMsg(null), 6000);
+      setReportMsg({ tone: 'success', text: `Report sent: ${data.message} (ID ${data.reportId.slice(0, 8)})` });
     },
-    onError: () => {
-      setReportSuccessMsg('ERROR: Failed to dispatch executive report.');
-      setTimeout(() => setReportSuccessMsg(null), 5000);
+    onError: (err) => {
+      setReportMsg({ tone: 'error', text: `Report could not be sent. ${getErrorMessage(err)}` });
     },
   });
 
@@ -76,7 +77,7 @@ export const EnterpriseFleetAnalyticsView: React.FC = () => {
       setExportLoading(format);
       await enterpriseAnalyticsApi.downloadExport(format, selectedInterval);
     } catch (err) {
-      console.error(`Export ${format} error:`, err);
+      setReportMsg({ tone: 'error', text: `${format.toUpperCase()} export failed. ${getErrorMessage(err)}` });
     } finally {
       setExportLoading(null);
     }
@@ -100,8 +101,8 @@ export const EnterpriseFleetAnalyticsView: React.FC = () => {
       <div className="border border-substrate-border bg-substrate-card p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="inline-block w-2.5 h-2.5 bg-hazard-green animate-pulse" />
-            <span className="text-[10px] font-mono tracking-widest text-hazard-green uppercase font-bold">
+            <span className="inline-block w-2.5 h-2.5 bg-terminal-green" />
+            <span className="text-xs font-mono tracking-widest text-terminal-green uppercase font-bold">
               ENTERPRISE FEDERATION // FLEET TELEMETRY BUS ACTIVE
             </span>
           </div>
@@ -135,22 +136,22 @@ export const EnterpriseFleetAnalyticsView: React.FC = () => {
             onClick={() => refetch()}
             disabled={isFetching}
             className="flex items-center gap-1.5 px-3 py-2 border border-substrate-border bg-substrate-dark hover:bg-industrial-800 text-industrial-200 text-xs font-mono font-bold transition-all disabled:opacity-50"
-            title="Refresh Fleet Data"
+            aria-label="Refresh Fleet Data"
           >
-            <RefreshCw size={14} className={isFetching ? 'animate-spin text-hazard-red' : ''} />
+            <RefreshCw size={14} aria-hidden="true" className={isFetching ? 'animate-spin text-hazard-red' : ''} />
             <span className="hidden sm:inline">REFRESH</span>
           </button>
         </div>
       </div>
 
-      {reportSuccessMsg && (
-        <div className="border-l-4 border-hazard-green bg-industrial-900/90 border border-substrate-border p-3 text-xs font-mono text-hazard-green flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 size={16} />
-            <span>{reportSuccessMsg}</span>
-          </div>
-          <button onClick={() => setReportSuccessMsg(null)} className="text-industrial-400 hover:text-white font-bold">✕</button>
-        </div>
+      {reportMsg && (
+        <Banner tone={reportMsg.tone} onDismiss={() => setReportMsg(null)}>
+          {reportMsg.text}
+        </Banner>
+      )}
+
+      {isError && (
+        <ErrorState title="Fleet benchmark could not be loaded" error={error} onRetry={() => refetch()} isRetrying={isFetching} />
       )}
 
       {/* Fleet KPI Executive Summary Tiles */}
@@ -158,17 +159,17 @@ export const EnterpriseFleetAnalyticsView: React.FC = () => {
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
           {/* Tile 1: Fleet Avg OEE */}
           <div className="border border-substrate-border bg-substrate-card p-3 flex flex-col justify-between relative overflow-hidden">
-            <div className="text-[10px] font-mono text-industrial-400 tracking-wider uppercase flex items-center justify-between">
+            <div className="text-xs font-mono text-industrial-400 tracking-wider uppercase flex items-center justify-between">
               <span>FLEET AVG OEE</span>
-              <BarChart3 size={14} className="text-hazard-green" />
+              <BarChart3 size={14} className="text-terminal-green" />
             </div>
             <div className="my-2">
               <div className="text-2xl font-mono font-black text-white">
                 {fleet.fleetAvgOee.toFixed(1)}%
               </div>
-              <div className="text-[10px] font-mono mt-0.5">
+              <div className="text-xs font-mono mt-0.5">
                 {fleet.fleetAvgOee >= 85 ? (
-                  <span className="text-hazard-green font-bold">[ WORLD CLASS ]</span>
+                  <span className="text-terminal-green font-bold">[ WORLD CLASS ]</span>
                 ) : fleet.fleetAvgOee >= 70 ? (
                   <span className="text-amber-400 font-bold">[ TARGET RANGE ]</span>
                 ) : (
@@ -178,7 +179,7 @@ export const EnterpriseFleetAnalyticsView: React.FC = () => {
             </div>
             <div className="w-full bg-industrial-900 h-1.5 border border-substrate-border overflow-hidden">
               <div
-                className={`h-full ${fleet.fleetAvgOee >= 85 ? 'bg-hazard-green' : fleet.fleetAvgOee >= 70 ? 'bg-amber-400' : 'bg-hazard-red'}`}
+                className={`h-full ${fleet.fleetAvgOee >= 85 ? 'bg-terminal-green' : fleet.fleetAvgOee >= 70 ? 'bg-amber-400' : 'bg-hazard-red'}`}
                 style={{ width: `${Math.min(100, fleet.fleetAvgOee)}%` }}
               />
             </div>
@@ -186,7 +187,7 @@ export const EnterpriseFleetAnalyticsView: React.FC = () => {
 
           {/* Tile 2: Fleet Availability */}
           <div className="border border-substrate-border bg-substrate-card p-3 flex flex-col justify-between">
-            <div className="text-[10px] font-mono text-industrial-400 tracking-wider uppercase flex items-center justify-between">
+            <div className="text-xs font-mono text-industrial-400 tracking-wider uppercase flex items-center justify-between">
               <span>AVAILABILITY</span>
               <Clock size={14} className="text-industrial-300" />
             </div>
@@ -194,11 +195,11 @@ export const EnterpriseFleetAnalyticsView: React.FC = () => {
               <div className="text-2xl font-mono font-black text-white">
                 {fleet.fleetAvgAvailability.toFixed(1)}%
               </div>
-              <div className="text-[10px] font-mono text-industrial-400 mt-0.5">
+              <div className="text-xs font-mono text-industrial-400 mt-0.5">
                 {fleet.downMachines > 0 ? (
                   <span className="text-hazard-red">{fleet.downMachines} DOWN ASSETS</span>
                 ) : (
-                  <span className="text-hazard-green">100% UP</span>
+                  <span className="text-terminal-green">100% UP</span>
                 )}
               </div>
             </div>
@@ -209,7 +210,7 @@ export const EnterpriseFleetAnalyticsView: React.FC = () => {
 
           {/* Tile 3: Fleet Performance */}
           <div className="border border-substrate-border bg-substrate-card p-3 flex flex-col justify-between">
-            <div className="text-[10px] font-mono text-industrial-400 tracking-wider uppercase flex items-center justify-between">
+            <div className="text-xs font-mono text-industrial-400 tracking-wider uppercase flex items-center justify-between">
               <span>PERFORMANCE</span>
               <TrendingUp size={14} className="text-industrial-300" />
             </div>
@@ -217,7 +218,7 @@ export const EnterpriseFleetAnalyticsView: React.FC = () => {
               <div className="text-2xl font-mono font-black text-white">
                 {fleet.fleetAvgPerformance.toFixed(1)}%
               </div>
-              <div className="text-[10px] font-mono text-industrial-400 mt-0.5">
+              <div className="text-xs font-mono text-industrial-400 mt-0.5">
                 SPEED EFFICIENCY
               </div>
             </div>
@@ -228,7 +229,7 @@ export const EnterpriseFleetAnalyticsView: React.FC = () => {
 
           {/* Tile 4: Fleet Quality */}
           <div className="border border-substrate-border bg-substrate-card p-3 flex flex-col justify-between">
-            <div className="text-[10px] font-mono text-industrial-400 tracking-wider uppercase flex items-center justify-between">
+            <div className="text-xs font-mono text-industrial-400 tracking-wider uppercase flex items-center justify-between">
               <span>QUALITY</span>
               <CheckCircle2 size={14} className="text-industrial-300" />
             </div>
@@ -236,7 +237,7 @@ export const EnterpriseFleetAnalyticsView: React.FC = () => {
               <div className="text-2xl font-mono font-black text-white">
                 {fleet.fleetAvgQuality.toFixed(1)}%
               </div>
-              <div className="text-[10px] font-mono text-industrial-400 mt-0.5">
+              <div className="text-xs font-mono text-industrial-400 mt-0.5">
                 SCRAP: {fleet.fleetScrapRate.toFixed(1)}%
               </div>
             </div>
@@ -247,7 +248,7 @@ export const EnterpriseFleetAnalyticsView: React.FC = () => {
 
           {/* Tile 5: Total Good Output */}
           <div className="border border-substrate-border bg-substrate-card p-3 flex flex-col justify-between">
-            <div className="text-[10px] font-mono text-industrial-400 tracking-wider uppercase flex items-center justify-between">
+            <div className="text-xs font-mono text-industrial-400 tracking-wider uppercase flex items-center justify-between">
               <span>TOTAL OUTPUT</span>
               <Layers size={14} className="text-industrial-300" />
             </div>
@@ -255,18 +256,18 @@ export const EnterpriseFleetAnalyticsView: React.FC = () => {
               <div className="text-2xl font-mono font-black text-white">
                 {fleet.totalGoodQuantity.toLocaleString()}
               </div>
-              <div className="text-[10px] font-mono text-industrial-400 mt-0.5">
+              <div className="text-xs font-mono text-industrial-400 mt-0.5">
                 SCRAP: {fleet.totalScrapQuantity.toLocaleString()} PCS
               </div>
             </div>
-            <div className="text-[9px] font-mono text-industrial-500 uppercase">
+            <div className="text-xs font-mono text-industrial-500 uppercase">
               {fleet.totalPlants} SITES // {fleet.activeLines} LINES
             </div>
           </div>
 
           {/* Tile 6: Fleet Machines Allocation */}
           <div className="border border-substrate-border bg-substrate-card p-3 flex flex-col justify-between">
-            <div className="text-[10px] font-mono text-industrial-400 tracking-wider uppercase flex items-center justify-between">
+            <div className="text-xs font-mono text-industrial-400 tracking-wider uppercase flex items-center justify-between">
               <span>FLEET ASSETS</span>
               <Cpu size={14} className="text-industrial-300" />
             </div>
@@ -274,15 +275,15 @@ export const EnterpriseFleetAnalyticsView: React.FC = () => {
               <div className="text-2xl font-mono font-black text-white">
                 {fleet.totalMachines}
               </div>
-              <div className="text-[10px] font-mono flex items-center gap-1.5 mt-0.5">
-                <span className="text-hazard-green">{fleet.runningMachines} RUN</span>
+              <div className="text-xs font-mono flex items-center gap-1.5 mt-0.5">
+                <span className="text-terminal-green">{fleet.runningMachines} RUN</span>
                 <span className="text-industrial-500">|</span>
                 <span className="text-amber-400">{fleet.idleMachines} IDLE</span>
                 <span className="text-industrial-500">|</span>
                 <span className="text-hazard-red">{fleet.downMachines} DOWN</span>
               </div>
             </div>
-            <div className="text-[9px] font-mono text-industrial-500 uppercase">
+            <div className="text-xs font-mono text-industrial-500 uppercase">
               DT: {fleet.totalDowntimeMinutes} MINS
             </div>
           </div>
@@ -308,7 +309,7 @@ export const EnterpriseFleetAnalyticsView: React.FC = () => {
 
             {/* Status Filter */}
             <div className="flex items-center gap-1 text-xs font-mono text-industrial-400">
-              <span className="text-[10px] tracking-wider uppercase">STATUS:</span>
+              <span className="text-xs tracking-wider uppercase">STATUS:</span>
               <select
                 value={statusFilter}
                 onChange={e => setStatusFilter(e.target.value)}
@@ -325,13 +326,13 @@ export const EnterpriseFleetAnalyticsView: React.FC = () => {
           <div className="flex items-center gap-2">
             <button
               onClick={expandAll}
-              className="px-2.5 py-1 text-[10px] font-mono border border-substrate-border bg-substrate-dark hover:bg-industrial-800 text-industrial-300"
+              className="px-2.5 py-1 text-xs font-mono border border-substrate-border bg-substrate-dark hover:bg-industrial-800 text-industrial-300"
             >
               + EXPAND ALL LINES
             </button>
             <button
               onClick={collapseAll}
-              className="px-2.5 py-1 text-[10px] font-mono border border-substrate-border bg-substrate-dark hover:bg-industrial-800 text-industrial-300"
+              className="px-2.5 py-1 text-xs font-mono border border-substrate-border bg-substrate-dark hover:bg-industrial-800 text-industrial-300"
             >
               - COLLAPSE ALL
             </button>
@@ -342,7 +343,7 @@ export const EnterpriseFleetAnalyticsView: React.FC = () => {
         <div className="overflow-x-auto">
           <table className="w-full text-left font-mono text-xs border-collapse">
             <thead>
-              <tr className="border-b border-substrate-border bg-industrial-900/60 text-[10px] text-industrial-400 uppercase tracking-wider">
+              <tr className="border-b border-substrate-border bg-industrial-900/60 text-xs text-industrial-400 uppercase tracking-wider">
                 <th className="py-2.5 px-3 w-14">RANK</th>
                 <th className="py-2.5 px-3 min-w-[200px]">PLANT / SITE</th>
                 <th className="py-2.5 px-3">TIER</th>
@@ -386,7 +387,7 @@ export const EnterpriseFleetAnalyticsView: React.FC = () => {
                         {/* Rank */}
                         <td className="py-3 px-3 font-bold">
                           {plant.rank === 1 ? (
-                            <span className="inline-block px-1.5 py-0.5 bg-hazard-green/20 text-hazard-green border border-hazard-green text-[10px]">
+                            <span className="inline-block px-1.5 py-0.5 bg-terminal-green/20 text-terminal-green border border-terminal-green text-xs">
                               #01
                             </span>
                           ) : (
@@ -399,9 +400,9 @@ export const EnterpriseFleetAnalyticsView: React.FC = () => {
                           <div className="font-bold text-white flex items-center gap-1.5">
                             <Factory size={14} className="text-industrial-400 shrink-0" />
                             <span>{plant.plantCode}</span>
-                            <span className="text-[10px] font-normal text-industrial-400">({plant.plantName})</span>
+                            <span className="text-xs font-normal text-industrial-400">({plant.plantName})</span>
                           </div>
-                          <div className="text-[10px] text-industrial-500 mt-0.5">
+                          <div className="text-xs text-industrial-500 mt-0.5">
                             TZ: {plant.timezone} {plant.address ? `// ${plant.address}` : ''}
                           </div>
                         </td>
@@ -409,9 +410,9 @@ export const EnterpriseFleetAnalyticsView: React.FC = () => {
                         {/* Benchmark Tier */}
                         <td className="py-3 px-3">
                           <span
-                            className={`inline-block px-2 py-0.5 text-[9px] font-bold tracking-wider uppercase border ${
+                            className={`inline-block px-2 py-0.5 text-xs font-bold tracking-wider uppercase border ${
                               isWorldClass
-                                ? 'bg-hazard-green/10 text-hazard-green border-hazard-green/40'
+                                ? 'bg-terminal-green/10 text-terminal-green border-terminal-green/40'
                                 : isTarget
                                 ? 'bg-amber-400/10 text-amber-400 border-amber-400/40'
                                 : 'bg-hazard-red/10 text-hazard-red border-hazard-red/40'
@@ -424,13 +425,13 @@ export const EnterpriseFleetAnalyticsView: React.FC = () => {
                         {/* OEE Metric */}
                         <td className="py-3 px-3">
                           <div className="flex items-center gap-2">
-                            <span className={`font-bold text-sm ${isWorldClass ? 'text-hazard-green' : isTarget ? 'text-amber-400' : 'text-hazard-red'}`}>
+                            <span className={`font-bold text-sm ${isWorldClass ? 'text-terminal-green' : isTarget ? 'text-amber-400' : 'text-hazard-red'}`}>
                               {plant.oee.toFixed(1)}%
                             </span>
                           </div>
                           <div className="w-16 bg-industrial-900 h-1 border border-substrate-border mt-1">
                             <div
-                              className={`h-full ${isWorldClass ? 'bg-hazard-green' : isTarget ? 'bg-amber-400' : 'bg-hazard-red'}`}
+                              className={`h-full ${isWorldClass ? 'bg-terminal-green' : isTarget ? 'bg-amber-400' : 'bg-hazard-red'}`}
                               style={{ width: `${Math.min(100, plant.oee)}%` }}
                             />
                           </div>
@@ -440,7 +441,7 @@ export const EnterpriseFleetAnalyticsView: React.FC = () => {
                         <td className="py-3 px-3">
                           <div className="flex items-center gap-1 text-xs">
                             {plant.oeeDeltaVsFleetAvg >= 0 ? (
-                              <span className="text-hazard-green font-bold flex items-center">
+                              <span className="text-terminal-green font-bold flex items-center">
                                 <TrendingUp size={12} className="mr-0.5" />
                                 +{plant.oeeDeltaVsFleetAvg.toFixed(1)}%
                               </span>
@@ -451,7 +452,7 @@ export const EnterpriseFleetAnalyticsView: React.FC = () => {
                               </span>
                             )}
                           </div>
-                          <span className="text-[9px] text-industrial-500">vs FLEET</span>
+                          <span className="text-xs text-industrial-500">vs FLEET</span>
                         </td>
 
                         {/* Avail */}
@@ -479,15 +480,15 @@ export const EnterpriseFleetAnalyticsView: React.FC = () => {
                           <div className="text-industrial-300">
                             {plant.totalScrapQuantity.toLocaleString()}
                           </div>
-                          <div className="text-[10px] text-industrial-500">
+                          <div className="text-xs text-industrial-500">
                             {plant.scrapRate.toFixed(1)}%
                           </div>
                         </td>
 
                         {/* Machines Breakdown */}
                         <td className="py-3 px-3">
-                          <div className="flex items-center gap-1 text-[11px]">
-                            <span className="text-hazard-green font-bold">{plant.runningMachines}</span>
+                          <div className="flex items-center gap-1 text-xs">
+                            <span className="text-terminal-green font-bold">{plant.runningMachines}</span>
                             <span className="text-industrial-500">/</span>
                             <span className="text-amber-400">{plant.idleMachines}</span>
                             <span className="text-industrial-500">/</span>
@@ -495,14 +496,14 @@ export const EnterpriseFleetAnalyticsView: React.FC = () => {
                               {plant.downMachines}
                             </span>
                           </div>
-                          <span className="text-[9px] text-industrial-500 uppercase">{plant.totalMachines} TOTAL</span>
+                          <span className="text-xs text-industrial-500 uppercase">{plant.totalMachines} TOTAL</span>
                         </td>
 
                         {/* Expand Button */}
                         <td className="py-3 px-3 text-right">
                           <button
                             onClick={() => toggleExpand(plant.plantId)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-mono font-bold tracking-wider uppercase border border-substrate-border bg-substrate-dark hover:bg-industrial-800 text-industrial-200 transition-all"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-mono font-bold tracking-wider uppercase border border-substrate-border bg-substrate-dark hover:bg-industrial-800 text-industrial-200 transition-all"
                           >
                             <span>{plant.lineMetrics?.length || 0} LINES</span>
                             {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
@@ -515,7 +516,7 @@ export const EnterpriseFleetAnalyticsView: React.FC = () => {
                         <tr className="bg-industrial-950/80 border-b border-substrate-border">
                           <td colSpan={12} className="p-4 pl-8">
                             <div className="border border-substrate-border bg-substrate-dark p-3">
-                              <div className="flex items-center justify-between pb-2 mb-2 border-b border-substrate-border text-[10px] text-industrial-400 uppercase tracking-wider">
+                              <div className="flex items-center justify-between pb-2 mb-2 border-b border-substrate-border text-xs text-industrial-400 uppercase tracking-wider">
                                 <span className="flex items-center gap-1.5 font-bold text-white">
                                   <Layers size={12} className="text-hazard-red" />
                                   LINE-LEVEL BOTTLENECK & PRODUCTION DRILL-DOWN // {plant.plantCode}
@@ -524,14 +525,14 @@ export const EnterpriseFleetAnalyticsView: React.FC = () => {
                               </div>
 
                               {(!plant.lineMetrics || plant.lineMetrics.length === 0) ? (
-                                <div className="py-4 text-center text-industrial-500 text-[11px]">
+                                <div className="py-4 text-center text-industrial-500 text-xs">
                                   NO PRODUCTION LINES MAPPED UNDER THIS PLANT.
                                 </div>
                               ) : (
                                 <div className="overflow-x-auto">
-                                  <table className="w-full text-left font-mono text-[11px]">
+                                  <table className="w-full text-left font-mono text-xs">
                                     <thead>
-                                      <tr className="text-industrial-400 text-[9px] uppercase border-b border-substrate-border/50">
+                                      <tr className="text-industrial-400 text-xs uppercase border-b border-substrate-border/50">
                                         <th className="py-1.5 px-2">LINE CODE</th>
                                         <th className="py-1.5 px-2">LINE NAME</th>
                                         <th className="py-1.5 px-2">AREA</th>
@@ -561,7 +562,7 @@ export const EnterpriseFleetAnalyticsView: React.FC = () => {
                                           <td className="py-2 px-2 text-industrial-300">{line.lineName}</td>
                                           <td className="py-2 px-2 text-industrial-400">{line.areaName || 'N/A'}</td>
                                           <td className="py-2 px-2">
-                                            <span className={`font-bold ${line.oee >= 85 ? 'text-hazard-green' : line.oee >= 70 ? 'text-amber-400' : 'text-hazard-red'}`}>
+                                            <span className={`font-bold ${line.oee >= 85 ? 'text-terminal-green' : line.oee >= 70 ? 'text-amber-400' : 'text-hazard-red'}`}>
                                               {line.oee.toFixed(1)}%
                                             </span>
                                           </td>
@@ -570,10 +571,10 @@ export const EnterpriseFleetAnalyticsView: React.FC = () => {
                                           <td className="py-2 px-2 text-industrial-300">{line.quality.toFixed(1)}%</td>
                                           <td className="py-2 px-2 text-industrial-300">
                                             <span className="text-white font-bold">{line.totalGoodQuantity.toLocaleString()}</span>
-                                            <span className="text-industrial-500 text-[9px] ml-1">({line.scrapRate.toFixed(1)}% scrap)</span>
+                                            <span className="text-industrial-500 text-xs ml-1">({line.scrapRate.toFixed(1)}% scrap)</span>
                                           </td>
                                           <td className="py-2 px-2">
-                                            <span className="text-hazard-green">{line.runningMachines}</span>
+                                            <span className="text-terminal-green">{line.runningMachines}</span>
                                             <span className="text-industrial-500">/</span>
                                             <span className="text-amber-400">{line.idleMachines}</span>
                                             <span className="text-industrial-500">/</span>
@@ -583,11 +584,11 @@ export const EnterpriseFleetAnalyticsView: React.FC = () => {
                                           </td>
                                           <td className="py-2 px-2">
                                             {line.isBottleneck ? (
-                                              <span className="inline-block px-1.5 py-0.5 bg-hazard-red/20 text-hazard-red border border-hazard-red text-[9px] font-bold uppercase">
+                                              <span className="inline-block px-1.5 py-0.5 bg-hazard-red/20 text-hazard-red border border-hazard-red text-xs font-bold uppercase">
                                                 [ ! BOTTLENECK ]
                                               </span>
                                             ) : (
-                                              <span className="inline-block px-1.5 py-0.5 bg-hazard-green/10 text-hazard-green border border-hazard-green/30 text-[9px] uppercase">
+                                              <span className="inline-block px-1.5 py-0.5 bg-terminal-green/10 text-terminal-green border border-terminal-green/30 text-xs uppercase">
                                                 OPERATIONAL
                                               </span>
                                             )}
@@ -618,7 +619,7 @@ export const EnterpriseFleetAnalyticsView: React.FC = () => {
             <FileText size={16} className="text-hazard-red" />
             EXECUTIVE FLEET REPORTING & BENCHMARK EXPORT
           </h2>
-          <p className="text-[11px] font-mono text-industrial-400 mt-0.5">
+          <p className="text-xs font-mono text-industrial-400 mt-0.5">
             Export standardized compliance and executive summary metrics for C-level review and supply chain coordination.
           </p>
         </div>
@@ -630,7 +631,7 @@ export const EnterpriseFleetAnalyticsView: React.FC = () => {
             disabled={exportLoading !== null}
             className="flex items-center gap-1.5 px-3 py-2 border border-substrate-border bg-substrate-dark hover:bg-industrial-800 text-white text-xs font-mono font-bold transition-all disabled:opacity-50"
           >
-            <Download size={14} className={exportLoading === 'csv' ? 'animate-bounce text-hazard-green' : 'text-industrial-400'} />
+            <Download size={14} className={exportLoading === 'csv' ? 'animate-bounce text-terminal-green' : 'text-industrial-400'} />
             <span>EXPORT CSV</span>
           </button>
 
@@ -651,7 +652,7 @@ export const EnterpriseFleetAnalyticsView: React.FC = () => {
             className="flex items-center gap-1.5 px-3 py-2 border border-industrial-600 bg-industrial-800 hover:bg-industrial-700 text-industrial-100 text-xs font-mono font-bold transition-all disabled:opacity-50"
             title="Dispatch Scheduled Executive Report with Audit Log"
           >
-            <Send size={14} className={scheduledReportMutation.isPending ? 'animate-pulse text-hazard-green' : 'text-industrial-300'} />
+            <Send size={14} className={scheduledReportMutation.isPending ? 'animate-pulse text-terminal-green' : 'text-industrial-300'} />
             <span>DISPATCH AUDIT REPORT</span>
           </button>
         </div>

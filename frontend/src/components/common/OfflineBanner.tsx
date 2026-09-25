@@ -20,12 +20,11 @@ export const OfflineBanner: React.FC = () => {
   if (isOnline) return null;
 
   return (
-    <div className="bg-hazard-red text-white px-4 py-2 text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-between border-b-2 border-black z-50 sticky top-0">
+    <div role="alert" className="bg-hazard-red text-white px-4 py-2 text-xs font-mono font-bold flex items-center justify-between border-b-2 border-black z-50 sticky top-0">
       <div className="flex items-center gap-2">
-        <WifiOff size={16} className="animate-pulse" />
-        <span>[ NETWORK OFFLINE ] — LOCAL CACHE MODE ACTIVE. RECONNECTING TELEMETRY STREAM...</span>
+        <WifiOff size={16} aria-hidden="true" />
+        <span>This device is offline. Data shown may be out of date until the connection returns.</span>
       </div>
-      <span className="text-[10px] bg-black/40 px-2 py-0.5 border border-white/20">RETRYING</span>
     </div>
   );
 };

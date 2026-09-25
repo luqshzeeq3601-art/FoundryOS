@@ -3,8 +3,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../services/api-client';
 import { UserDto, RoleType, PagedResponse, CreateUserRequest, UpdateUserRequest, ResetPasswordRequest } from '../../types';
 import { IndustrialButton } from '../common/IndustrialButton';
+import { Banner } from '../common/Banner';
+import { ErrorState } from '../common/ErrorState';
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { IndustrialBadge } from '../common/IndustrialBadge';
 import { Modal } from '../common/Modal';
+import { ConfirmDialog } from '../common/ConfirmDialog';
 import { Users, UserPlus, Key, Edit, Trash2, Search, CheckCircle, XCircle } from 'lucide-react';
 
 export const AdminUsersView: React.FC = () => {
@@ -13,6 +17,8 @@ export const AdminUsersView: React.FC = () => {
   const [roleFilter, setRoleFilter] = useState<RoleType | ''>('');
   const [activeFilter, setActiveFilter] = useState<boolean | undefined>(undefined);
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearch = useDebouncedValue(searchTerm.trim());
+  const [archiveTarget, setArchiveTarget] = useState<UserDto | null>(null);
   const [page, setPage] = useState(0);
 
   // Modals
@@ -30,13 +36,20 @@ export const AdminUsersView: React.FC = () => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Fetch Users
-  const { data: usersData, isLoading } = useQuery<PagedResponse<UserDto>>({
-    queryKey: ['admin-users', roleFilter, activeFilter, searchTerm, page],
+  const {
+    data: usersData,
+    isLoading,
+    isError: isListError,
+    error: listError,
+    refetch: refetchList,
+    isFetching: isListFetching,
+  } = useQuery<PagedResponse<UserDto>>({
+    queryKey: ['admin-users', roleFilter, activeFilter, debouncedSearch, page],
     queryFn: () =>
       api.get<PagedResponse<UserDto>>('/users', {
         role: roleFilter || undefined,
         isActive: activeFilter !== undefined ? activeFilter : undefined,
-        search: searchTerm || undefined,
+        search: debouncedSearch || undefined,
         page,
         size: 15,
       }),
@@ -90,10 +103,12 @@ export const AdminUsersView: React.FC = () => {
     mutationFn: ({ id, version }: { id: string; version: number }) =>
       api.delete<UserDto>(`/users/${id}`, { expectedVersion: version }),
     onSuccess: () => {
+      setArchiveTarget(null);
       queryClient.invalidateQueries({ queryKey: ['admin-users'] });
       setSuccessMessage('User identity archived and all active sessions terminated.');
     },
     onError: (err: any) => {
+      setArchiveTarget(null);
       setErrorMessage(err.response?.data?.error?.message || 'Failed to archive user.');
     },
   });
@@ -167,7 +182,7 @@ export const AdminUsersView: React.FC = () => {
       {/* Header */}
       <div className="bg-substrate-card border border-substrate-border p-4 sm:p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
-          <div className="text-[11px] font-mono uppercase tracking-widest text-industrial-500">
+          <div className="text-xs font-mono uppercase tracking-widest text-industrial-500">
             [ IDENTITY & ACCESS MANAGEMENT // IAM ]
           </div>
           <h1 className="text-xl sm:text-2xl font-bold font-mono uppercase text-white tracking-tight flex items-center gap-2 mt-0.5">
@@ -191,21 +206,15 @@ export const AdminUsersView: React.FC = () => {
 
       {/* Alert Banners */}
       {errorMessage && (
-        <div className="p-3 bg-red-950/80 border border-hazard-red text-hazard-red text-xs font-mono flex items-center justify-between">
-          <span>[ ERROR ]: {errorMessage}</span>
-          <button onClick={() => setErrorMessage(null)} className="text-white hover:underline">
-            DISMISS
-          </button>
-        </div>
+        <Banner tone="error" onDismiss={() => setErrorMessage(null)}>
+          {errorMessage}
+        </Banner>
       )}
 
       {successMessage && (
-        <div className="p-3 bg-emerald-950/80 border border-terminal-green text-terminal-green text-xs font-mono flex items-center justify-between">
-          <span>[ SUCCESS ]: {successMessage}</span>
-          <button onClick={() => setSuccessMessage(null)} className="text-white hover:underline">
-            DISMISS
-          </button>
-        </div>
+        <Banner tone="success" onDismiss={() => setSuccessMessage(null)}>
+          {successMessage}
+        </Banner>
       )}
 
       {/* Filter Bar */}
@@ -217,7 +226,11 @@ export const AdminUsersView: React.FC = () => {
               (r) => (
                 <button
                   key={r}
-                  onClick={() => setRoleFilter(r)}
+                  onClick={() => {
+                  setRoleFilter(r);
+                  setPage(0);
+                }}
+                aria-pressed={roleFilter === r}
                   className={`px-2.5 py-1 text-xs font-mono uppercase border transition-colors whitespace-nowrap ${
                     roleFilter === r
                       ? 'bg-industrial-700 text-white border-industrial-400 font-bold'
@@ -233,7 +246,11 @@ export const AdminUsersView: React.FC = () => {
           <span className="text-xs font-mono uppercase text-industrial-400 shrink-0 ml-2">STATUS:</span>
           <div className="flex gap-1">
             <button
-              onClick={() => setActiveFilter(undefined)}
+              onClick={() => {
+                  setActiveFilter(undefined);
+                  setPage(0);
+                }}
+                aria-pressed={activeFilter === undefined}
               className={`px-2 py-1 text-xs font-mono uppercase border transition-colors ${
                 activeFilter === undefined
                   ? 'bg-industrial-700 text-white border-industrial-400 font-bold'
@@ -243,7 +260,11 @@ export const AdminUsersView: React.FC = () => {
               ALL
             </button>
             <button
-              onClick={() => setActiveFilter(true)}
+              onClick={() => {
+                  setActiveFilter(true);
+                  setPage(0);
+                }}
+                aria-pressed={activeFilter === true}
               className={`px-2 py-1 text-xs font-mono uppercase border transition-colors ${
                 activeFilter === true
                   ? 'bg-emerald-950 text-terminal-green border-terminal-green font-bold'
@@ -253,7 +274,11 @@ export const AdminUsersView: React.FC = () => {
               ACTIVE
             </button>
             <button
-              onClick={() => setActiveFilter(false)}
+              onClick={() => {
+                  setActiveFilter(false);
+                  setPage(0);
+                }}
+                aria-pressed={activeFilter === false}
               className={`px-2 py-1 text-xs font-mono uppercase border transition-colors ${
                 activeFilter === false
                   ? 'bg-red-950 text-hazard-red border-hazard-red font-bold'
@@ -268,39 +293,49 @@ export const AdminUsersView: React.FC = () => {
         <div className="relative w-full lg:w-72">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-industrial-500" />
           <input
-            type="text"
+            type="search"
+            aria-label="Search users by name or email"
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="SEARCH BY NAME / EMAIL..."
-            className="w-full bg-industrial-900 border border-substrate-border pl-9 pr-3 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-industrial-400"
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setPage(0);
+            }}
+            placeholder="Search name or email"
+            className="w-full bg-industrial-900 border border-substrate-border pl-9 pr-3 min-h-[44px] text-sm text-white font-mono focus:outline-none focus:border-industrial-400"
           />
         </div>
       </div>
 
       {/* Users Table */}
+      {isListError && (
+        <ErrorState title="Users could not be loaded" error={listError} onRetry={() => refetchList()} isRetrying={isListFetching} />
+      )}
+
       <div className="bg-substrate-card border border-substrate-border overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left font-mono text-xs border-collapse">
             <thead>
               <tr className="border-b border-substrate-border bg-industrial-900 text-industrial-400 uppercase">
-                <th className="p-3">DISPLAY NAME</th>
-                <th className="p-3">EMAIL ADDRESS</th>
-                <th className="p-3">ROLE // PRIVILEGE</th>
-                <th className="p-3">STATUS</th>
-                <th className="p-3">POLICY FLAGS</th>
-                <th className="p-3 text-right">ACTIONS</th>
+                <th scope="col" className="p-3">DISPLAY NAME</th>
+                <th scope="col" className="p-3">EMAIL ADDRESS</th>
+                <th scope="col" className="p-3">ROLE // PRIVILEGE</th>
+                <th scope="col" className="p-3">STATUS</th>
+                <th scope="col" className="p-3">POLICY FLAGS</th>
+                <th scope="col" className="p-3 text-right">ACTIONS</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-substrate-border">
               {isLoading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <tr key={i}>
+                    <td colSpan={6} className="p-3">
+                      <div className="h-6 bg-industrial-900 animate-pulse" />
+                    </td>
+                  </tr>
+                ))
+              ) : users.length === 0 && !isListError ? (
                 <tr>
-                  <td colSpan={6} className="p-6 text-center text-industrial-500">
-                    SCANNING OPERATOR DIRECTORY...
-                  </td>
-                </tr>
-              ) : users.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="p-6 text-center text-industrial-500">
+                  <td colSpan={6} className="p-6 text-center text-sm text-industrial-300">
                     NO MATCHING OPERATOR IDENTITIES FOUND.
                   </td>
                 </tr>
@@ -339,41 +374,37 @@ export const AdminUsersView: React.FC = () => {
                     </td>
                     <td className="p-3">
                       {u.mustChangePassword ? (
-                        <span className="text-[10px] bg-amber-950/80 text-hazard-amber border border-hazard-amber/60 px-1.5 py-0.5">
+                        <span className="text-xs bg-amber-950/80 text-hazard-amber border border-hazard-amber/60 px-1.5 py-0.5">
                           TEMP CREDENTIALS
                         </span>
                       ) : (
-                        <span className="text-industrial-500 text-[10px]">NORMAL</span>
+                        <span className="text-industrial-500 text-xs">NORMAL</span>
                       )}
                     </td>
                     <td className="p-3 text-right">
                       <div className="flex items-center justify-end gap-1.5">
                         <button
                           onClick={() => handleOpenReset(u)}
-                          className="p-1.5 bg-industrial-900 border border-substrate-border hover:border-hazard-amber text-industrial-300 hover:text-hazard-amber"
-                          title="Reset Password"
+                          className="w-11 h-11 flex items-center justify-center bg-industrial-900 border border-substrate-border hover:border-hazard-amber text-industrial-300 hover:text-hazard-amber"
+                          aria-label="Reset Password"
                         >
-                          <Key size={14} />
+                          <Key size={14} aria-hidden="true" />
                         </button>
 
                         <button
                           onClick={() => handleOpenEdit(u)}
-                          className="p-1.5 bg-industrial-900 border border-substrate-border hover:border-industrial-400 text-industrial-300 hover:text-white"
-                          title="Edit User"
+                          className="w-11 h-11 flex items-center justify-center bg-industrial-900 border border-substrate-border hover:border-industrial-400 text-industrial-300 hover:text-white"
+                          aria-label="Edit User"
                         >
-                          <Edit size={14} />
+                          <Edit size={14} aria-hidden="true" />
                         </button>
 
                         <button
-                          onClick={() => {
-                            if (confirm(`Archive user identity ${u.displayName} (${u.email})?`)) {
-                              archiveMutation.mutate({ id: u.id, version: u.version });
-                            }
-                          }}
-                          className="p-1.5 bg-industrial-900 border border-substrate-border hover:border-hazard-red text-industrial-400 hover:text-hazard-red"
-                          title="Archive User"
+                          onClick={() => setArchiveTarget(u)}
+                          className="w-11 h-11 flex items-center justify-center bg-industrial-900 border border-substrate-border hover:border-hazard-red text-industrial-400 hover:text-hazard-red"
+                          aria-label="Archive User"
                         >
-                          <Trash2 size={14} />
+                          <Trash2 size={14} aria-hidden="true" />
                         </button>
                       </div>
                     </td>
@@ -421,10 +452,10 @@ export const AdminUsersView: React.FC = () => {
       >
         <form onSubmit={handleCreateSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-mono uppercase text-industrial-400 mb-1">
+            <label htmlFor="admin-users-field-1" className="block text-xs font-mono uppercase text-industrial-400 mb-1">
               Email Address *
             </label>
-            <input
+            <input id="admin-users-field-1"
               type="email"
               required
               value={email}
@@ -435,10 +466,10 @@ export const AdminUsersView: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-mono uppercase text-industrial-400 mb-1">
+            <label htmlFor="admin-users-field-2" className="block text-xs font-mono uppercase text-industrial-400 mb-1">
               Display Name / Operator ID *
             </label>
-            <input
+            <input id="admin-users-field-2"
               type="text"
               required
               value={displayName}
@@ -449,10 +480,10 @@ export const AdminUsersView: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-mono uppercase text-industrial-400 mb-1">
+            <label htmlFor="admin-users-field-3" className="block text-xs font-mono uppercase text-industrial-400 mb-1">
               Role & Privilege Class *
             </label>
-            <select
+            <select id="admin-users-field-3"
               required
               value={role}
               onChange={(e) => setRole(e.target.value as RoleType)}
@@ -468,10 +499,10 @@ export const AdminUsersView: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-mono uppercase text-industrial-400 mb-1">
+            <label htmlFor="admin-users-field-4" className="block text-xs font-mono uppercase text-industrial-400 mb-1">
               Temporary Initialization Password *
             </label>
-            <input
+            <input id="admin-users-field-4"
               type="password"
               required
               value={temporaryPassword}
@@ -514,10 +545,10 @@ export const AdminUsersView: React.FC = () => {
       >
         <form onSubmit={handleUpdateSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-mono uppercase text-industrial-400 mb-1">
+            <label htmlFor="admin-users-field-5" className="block text-xs font-mono uppercase text-industrial-400 mb-1">
               Display Name *
             </label>
-            <input
+            <input id="admin-users-field-5"
               type="text"
               required
               value={displayName}
@@ -527,10 +558,10 @@ export const AdminUsersView: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-mono uppercase text-industrial-400 mb-1">
+            <label htmlFor="admin-users-field-6" className="block text-xs font-mono uppercase text-industrial-400 mb-1">
               Assigned Role *
             </label>
-            <select
+            <select id="admin-users-field-6"
               required
               value={role}
               onChange={(e) => setRole(e.target.value as RoleType)}
@@ -592,10 +623,10 @@ export const AdminUsersView: React.FC = () => {
       >
         <form onSubmit={handleResetSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-mono uppercase text-industrial-400 mb-1">
+            <label htmlFor="admin-users-field-7" className="block text-xs font-mono uppercase text-industrial-400 mb-1">
               New Temporary Password *
             </label>
-            <input
+            <input id="admin-users-field-7"
               type="password"
               required
               value={temporaryPassword}
@@ -628,6 +659,19 @@ export const AdminUsersView: React.FC = () => {
           </div>
         </form>
       </Modal>
+      <ConfirmDialog
+        isOpen={!!archiveTarget}
+        title="Archive user?"
+        message={
+          archiveTarget
+            ? `${archiveTarget.displayName} (${archiveTarget.email}) will no longer be able to sign in. Their past actions stay in the audit log.`
+            : ''
+        }
+        confirmLabel="Archive user"
+        isLoading={archiveMutation.isPending}
+        onCancel={() => setArchiveTarget(null)}
+        onConfirm={() => archiveTarget && archiveMutation.mutate({ id: archiveTarget.id, version: archiveTarget.version })}
+      />
     </div>
   );
 };

@@ -6,6 +6,7 @@ import { HierarchyTreeDto, AreaNodeDto, LineNodeDto, WorkCellNodeDto } from '../
 import { IndustrialCard } from '../common/IndustrialCard';
 import { IndustrialButton } from '../common/IndustrialButton';
 import { IndustrialBadge } from '../common/IndustrialBadge';
+import { ErrorState } from '../common/ErrorState';
 import { 
   Building2, 
   Layers, 
@@ -51,7 +52,7 @@ export const HierarchyManagementView: React.FC = () => {
 
   const plantId = activePlant?.id || '';
 
-  const { data: tree, isLoading, refetch } = useQuery<HierarchyTreeDto>({
+  const { data: tree, isLoading, refetch, isError, error: treeError, isFetching } = useQuery<HierarchyTreeDto>({
     queryKey: ['hierarchy-tree', plantId],
     queryFn: () => hierarchyApi.getPlantHierarchyTree(plantId),
     enabled: !!plantId,
@@ -174,27 +175,27 @@ export const HierarchyManagementView: React.FC = () => {
       {/* Metric Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 font-mono">
         <IndustrialCard className="p-3 border-l-2 border-l-hazard-red">
-          <div className="text-[10px] text-industrial-400 uppercase">ACTIVE PLANT SITE</div>
+          <div className="text-xs text-industrial-400 uppercase">ACTIVE PLANT SITE</div>
           <div className="text-lg font-bold text-white mt-0.5 truncate">{activePlant?.code || 'N/A'}</div>
-          <div className="text-[10px] text-industrial-500">{activePlant?.name}</div>
+          <div className="text-xs text-industrial-500">{activePlant?.name}</div>
         </IndustrialCard>
 
         <IndustrialCard className="p-3 border-l-2 border-l-industrial-400">
-          <div className="text-[10px] text-industrial-400 uppercase">PRODUCTION AREAS</div>
+          <div className="text-xs text-industrial-400 uppercase">PRODUCTION AREAS</div>
           <div className="text-lg font-bold text-white mt-0.5">{totalAreas} AREAS</div>
-          <div className="text-[10px] text-industrial-500">Logical sub-plants</div>
+          <div className="text-xs text-industrial-500">Logical sub-plants</div>
         </IndustrialCard>
 
         <IndustrialCard className="p-3 border-l-2 border-l-industrial-400">
-          <div className="text-[10px] text-industrial-400 uppercase">PRODUCTION LINES</div>
+          <div className="text-xs text-industrial-400 uppercase">PRODUCTION LINES</div>
           <div className="text-lg font-bold text-white mt-0.5">{totalLines} LINES</div>
-          <div className="text-[10px] text-industrial-500">Across {totalCells} work cells</div>
+          <div className="text-xs text-industrial-500">Across {totalCells} work cells</div>
         </IndustrialCard>
 
         <IndustrialCard className="p-3 border-l-2 border-l-terminal-green">
-          <div className="text-[10px] text-industrial-400 uppercase">MAPPED MACHINES</div>
+          <div className="text-xs text-industrial-400 uppercase">MAPPED MACHINES</div>
           <div className="text-lg font-bold text-terminal-green mt-0.5">{totalMachines} ASSETS</div>
-          <div className="text-[10px] text-industrial-500">Bound to Plant Scope</div>
+          <div className="text-xs text-industrial-500">Bound to Plant Scope</div>
         </IndustrialCard>
       </div>
 
@@ -210,19 +211,22 @@ export const HierarchyManagementView: React.FC = () => {
                   SITE TREE // {activePlant?.code}
                 </span>
               </div>
-              <span className="text-[10px] font-mono text-industrial-400">
+              <span className="text-xs font-mono text-industrial-400">
                 TIMEZONE: {activePlant?.timezone || 'UTC'}
               </span>
             </div>
 
-            {isLoading ? (
-              <div className="py-12 flex flex-col items-center justify-center gap-2 text-industrial-400 font-mono text-xs">
-                <RefreshCw size={18} className="animate-spin text-hazard-red" />
-                <span>RESOLVING MULTI-TENANT HIERARCHY TREE...</span>
+            {isError ? (
+              <ErrorState compact title="Plant hierarchy could not be loaded" error={treeError} onRetry={() => refetch()} isRetrying={isFetching} />
+            ) : isLoading ? (
+              <div className="space-y-2" aria-busy="true" aria-label="Loading plant hierarchy">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="h-8 bg-industrial-900 animate-pulse" />
+                ))}
               </div>
             ) : !tree || tree.areas.length === 0 ? (
               <div className="py-12 text-center text-industrial-400 font-mono text-xs border border-dashed border-substrate-border p-6">
-                <p>NO PRODUCTION AREAS DEFINED IN THIS PLANT SITE.</p>
+                <p>This plant has no production areas yet.</p>
                 {hasRole('ADMIN', 'PRODUCTION_MANAGER') && (
                   <IndustrialButton
                     variant="primary"
@@ -230,7 +234,7 @@ export const HierarchyManagementView: React.FC = () => {
                     className="mt-3"
                     onClick={() => setShowAddAreaModal(true)}
                   >
-                    <Plus size={12} /> PROVISION FIRST PRODUCTION AREA
+                    <Plus size={12} aria-hidden="true" /> Add first area
                   </IndustrialButton>
                 )}
               </div>
@@ -250,7 +254,7 @@ export const HierarchyManagementView: React.FC = () => {
                   <div className="flex items-center gap-2">
                     <Building2 size={15} className="text-hazard-red shrink-0" />
                     <span className="font-bold text-white">{tree.plantCode}</span>
-                    <span className="text-industrial-400 text-[11px] font-sans">({tree.plantName})</span>
+                    <span className="text-industrial-400 text-xs font-sans">({tree.plantName})</span>
                   </div>
                   <IndustrialBadge size="sm" variant="success">{tree.status}</IndustrialBadge>
                 </div>
@@ -283,11 +287,11 @@ export const HierarchyManagementView: React.FC = () => {
                             </button>
                             <Layers size={14} className="text-industrial-300 shrink-0" />
                             <span className="font-bold text-industrial-100">{area.areaCode}</span>
-                            <span className="text-industrial-400 text-[11px] font-sans">({area.areaName})</span>
+                            <span className="text-industrial-400 text-xs font-sans">({area.areaName})</span>
                           </div>
 
                           <div className="flex items-center gap-2">
-                            <span className="text-[10px] text-industrial-400">{area.lines.length} lines</span>
+                            <span className="text-xs text-industrial-400">{area.lines.length} lines</span>
                             {hasRole('ADMIN', 'PRODUCTION_MANAGER') && (
                               <button
                                 type="button"
@@ -297,7 +301,7 @@ export const HierarchyManagementView: React.FC = () => {
                                   setShowAddLineModal(true);
                                 }}
                                 title="Add Production Line to this Area"
-                                className="text-[10px] text-industrial-300 hover:text-white border border-substrate-border px-1.5 py-0.5 hover:bg-industrial-800"
+                                className="text-xs text-industrial-300 hover:text-white border border-substrate-border px-1.5 py-0.5 hover:bg-industrial-800"
                               >
                                 + LINE
                               </button>
@@ -334,11 +338,11 @@ export const HierarchyManagementView: React.FC = () => {
                                       </button>
                                       <GitBranch size={13} className="text-industrial-300 shrink-0" />
                                       <span className="font-semibold text-industrial-200">{line.lineCode}</span>
-                                      <span className="text-industrial-400 text-[10px] font-sans">({line.lineName})</span>
+                                      <span className="text-industrial-400 text-xs font-sans">({line.lineName})</span>
                                     </div>
 
                                     <div className="flex items-center gap-2">
-                                      <span className="text-[10px] text-industrial-400">{line.workCells.length} cells</span>
+                                      <span className="text-xs text-industrial-400">{line.workCells.length} cells</span>
                                       {hasRole('ADMIN', 'PRODUCTION_MANAGER') && (
                                         <button
                                           type="button"
@@ -348,7 +352,7 @@ export const HierarchyManagementView: React.FC = () => {
                                             setShowAddCellModal(true);
                                           }}
                                           title="Add Work Cell to this Line"
-                                          className="text-[10px] text-industrial-300 hover:text-white border border-substrate-border px-1.5 py-0.5 hover:bg-industrial-800"
+                                          className="text-xs text-industrial-300 hover:text-white border border-substrate-border px-1.5 py-0.5 hover:bg-industrial-800"
                                         >
                                           + CELL
                                         </button>
@@ -385,10 +389,10 @@ export const HierarchyManagementView: React.FC = () => {
                                                 </button>
                                                 <Boxes size={12} className="text-industrial-400 shrink-0" />
                                                 <span className="text-industrial-300">{cell.cellCode}</span>
-                                                <span className="text-industrial-500 text-[10px] font-sans">({cell.cellName})</span>
+                                                <span className="text-industrial-500 text-xs font-sans">({cell.cellName})</span>
                                               </div>
 
-                                              <span className="text-[10px] text-terminal-green">
+                                              <span className="text-xs text-terminal-green">
                                                 {cell.machines?.length || 0} machines
                                               </span>
                                             </div>
@@ -406,12 +410,12 @@ export const HierarchyManagementView: React.FC = () => {
                                                       name: machine.name,
                                                       details: machine
                                                     })}
-                                                    className="flex items-center justify-between p-1 bg-substrate-dark border border-substrate-border/40 hover:border-terminal-green/60 cursor-pointer text-[11px]"
+                                                    className="flex items-center justify-between p-1 bg-substrate-dark border border-substrate-border/40 hover:border-terminal-green/60 cursor-pointer text-xs"
                                                   >
                                                     <div className="flex items-center gap-1.5">
                                                       <Cpu size={11} className="text-terminal-green shrink-0" />
                                                       <span className="text-white font-mono">{machine.serialNumber}</span>
-                                                      <span className="text-industrial-400 font-sans text-[10px]">{machine.name}</span>
+                                                      <span className="text-industrial-400 font-sans text-xs">{machine.name}</span>
                                                     </div>
                                                     <IndustrialBadge 
                                                       size="sm" 
@@ -456,29 +460,29 @@ export const HierarchyManagementView: React.FC = () => {
             {selectedEntity ? (
               <div className="space-y-3 font-mono text-xs">
                 <div>
-                  <span className="text-[10px] text-industrial-400 uppercase">NODE TYPE</span>
+                  <span className="text-xs text-industrial-400 uppercase">NODE TYPE</span>
                   <div className="font-bold text-hazard-red">{selectedEntity.type}</div>
                 </div>
 
                 <div>
-                  <span className="text-[10px] text-industrial-400 uppercase">IDENTIFIER / CODE</span>
+                  <span className="text-xs text-industrial-400 uppercase">IDENTIFIER / CODE</span>
                   <div className="font-bold text-white text-sm">{selectedEntity.code}</div>
                 </div>
 
                 <div>
-                  <span className="text-[10px] text-industrial-400 uppercase">NAME</span>
+                  <span className="text-xs text-industrial-400 uppercase">NAME</span>
                   <div className="text-industrial-200">{selectedEntity.name}</div>
                 </div>
 
                 <div>
-                  <span className="text-[10px] text-industrial-400 uppercase">UUID</span>
-                  <div className="text-[10px] text-industrial-400 break-all">{selectedEntity.id}</div>
+                  <span className="text-xs text-industrial-400 uppercase">UUID</span>
+                  <div className="text-xs text-industrial-400 break-all">{selectedEntity.id}</div>
                 </div>
 
                 {selectedEntity.details && (
                   <div className="mt-3 pt-2 border-t border-substrate-border/60">
-                    <span className="text-[10px] text-industrial-400 uppercase">PROPERTIES</span>
-                    <pre className="mt-1 p-2 bg-substrate-dark border border-substrate-border text-[10px] text-industrial-300 overflow-x-auto">
+                    <span className="text-xs text-industrial-400 uppercase">PROPERTIES</span>
+                    <pre className="mt-1 p-2 bg-substrate-dark border border-substrate-border text-xs text-industrial-300 overflow-x-auto">
                       {JSON.stringify(selectedEntity.details, null, 2)}
                     </pre>
                   </div>
@@ -500,7 +504,7 @@ export const HierarchyManagementView: React.FC = () => {
             <p className="text-xs text-industrial-300 font-sans leading-relaxed">
               Every data access query across Machines, Telemetry, Downtime Events, Production Orders, and Audit Logs is strictly isolated by <code className="font-mono text-white bg-industrial-900 px-1">plant_id</code>.
             </p>
-            <div className="mt-3 space-y-1 text-[11px] font-mono text-industrial-400">
+            <div className="mt-3 space-y-1 text-xs font-mono text-industrial-400">
               <div className="flex items-center justify-between py-0.5 border-b border-substrate-border/40">
                 <span>ACTIVE PLANT CLAIMS:</span>
                 <span className="text-white font-bold">{activePlant?.code}</span>
@@ -538,8 +542,8 @@ export const HierarchyManagementView: React.FC = () => {
 
             <form onSubmit={handleCreateArea} className="space-y-3 font-mono text-xs">
               <div>
-                <label className="block text-[10px] text-industrial-400 uppercase mb-1">AREA CODE</label>
-                <input
+                <label htmlFor="hierarchy-management-field-1" className="block text-xs text-industrial-400 uppercase mb-1">AREA CODE</label>
+                <input id="hierarchy-management-field-1"
                   type="text"
                   required
                   placeholder="e.g. AREA-MACHINING-01"
@@ -550,8 +554,8 @@ export const HierarchyManagementView: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-[10px] text-industrial-400 uppercase mb-1">AREA NAME</label>
-                <input
+                <label htmlFor="hierarchy-management-field-2" className="block text-xs text-industrial-400 uppercase mb-1">AREA NAME</label>
+                <input id="hierarchy-management-field-2"
                   type="text"
                   required
                   placeholder="e.g. Precision CNC Machining"
@@ -562,8 +566,8 @@ export const HierarchyManagementView: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-[10px] text-industrial-400 uppercase mb-1">DESCRIPTION (OPTIONAL)</label>
-                <textarea
+                <label htmlFor="hierarchy-management-field-3" className="block text-xs text-industrial-400 uppercase mb-1">DESCRIPTION (OPTIONAL)</label>
+                <textarea id="hierarchy-management-field-3"
                   placeholder="Operational scope and notes..."
                   value={areaDesc}
                   onChange={(e) => setAreaDesc(e.target.value)}
@@ -614,8 +618,8 @@ export const HierarchyManagementView: React.FC = () => {
 
             <form onSubmit={handleCreateLine} className="space-y-3 font-mono text-xs">
               <div>
-                <label className="block text-[10px] text-industrial-400 uppercase mb-1">LINE CODE</label>
-                <input
+                <label htmlFor="hierarchy-management-field-4" className="block text-xs text-industrial-400 uppercase mb-1">LINE CODE</label>
+                <input id="hierarchy-management-field-4"
                   type="text"
                   required
                   placeholder="e.g. LINE-MILL-01"
@@ -626,8 +630,8 @@ export const HierarchyManagementView: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-[10px] text-industrial-400 uppercase mb-1">LINE NAME</label>
-                <input
+                <label htmlFor="hierarchy-management-field-5" className="block text-xs text-industrial-400 uppercase mb-1">LINE NAME</label>
+                <input id="hierarchy-management-field-5"
                   type="text"
                   required
                   placeholder="e.g. 5-Axis Milling Line"
@@ -680,8 +684,8 @@ export const HierarchyManagementView: React.FC = () => {
 
             <form onSubmit={handleCreateCell} className="space-y-3 font-mono text-xs">
               <div>
-                <label className="block text-[10px] text-industrial-400 uppercase mb-1">CELL CODE</label>
-                <input
+                <label htmlFor="hierarchy-management-field-6" className="block text-xs text-industrial-400 uppercase mb-1">CELL CODE</label>
+                <input id="hierarchy-management-field-6"
                   type="text"
                   required
                   placeholder="e.g. CELL-ROBOTIC-01"
@@ -692,8 +696,8 @@ export const HierarchyManagementView: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-[10px] text-industrial-400 uppercase mb-1">CELL NAME</label>
-                <input
+                <label htmlFor="hierarchy-management-field-7" className="block text-xs text-industrial-400 uppercase mb-1">CELL NAME</label>
+                <input id="hierarchy-management-field-7"
                   type="text"
                   required
                   placeholder="e.g. Robotic Palletizer Cell"

@@ -1,7 +1,14 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { ApiResponse } from '../types';
 
-let accessToken: string | null = localStorage.getItem('foundryos_access_token') || localStorage.getItem('factoryos_access_token');
+// Access tokens live in memory only; the HttpOnly refresh cookie restores the session on reload.
+let accessToken: string | null = null;
+try {
+  localStorage.removeItem('foundryos_access_token');
+  localStorage.removeItem('factoryos_access_token');
+} catch {
+  // Storage can be unavailable (private mode); nothing to purge.
+}
 let activePlantId: string | null = localStorage.getItem('foundryos_active_plant_id') || localStorage.getItem('factoryos_active_plant_id');
 let isRefreshing = false;
 let failedQueue: Array<{
@@ -22,12 +29,17 @@ const processQueue = (error: unknown, token: string | null = null) => {
 
 export const setStoredAccessToken = (token: string | null) => {
   accessToken = token;
-  if (token) {
-    localStorage.setItem('foundryos_access_token', token);
-  } else {
-    localStorage.removeItem('foundryos_access_token');
-    localStorage.removeItem('factoryos_access_token');
-  }
+};
+
+/** Exchanges the HttpOnly refresh cookie for a new in-memory access token. */
+export const refreshAccessToken = async (): Promise<string> => {
+  const { data } = await axios.post<ApiResponse<{ accessToken: string }>>(
+    '/api/v1/auth/refresh',
+    {},
+    { withCredentials: true }
+  );
+  setStoredAccessToken(data.data.accessToken);
+  return data.data.accessToken;
 };
 
 export const getStoredAccessToken = () => accessToken;
@@ -91,14 +103,7 @@ apiClient.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const { data } = await axios.post<ApiResponse<{ accessToken: string }>>(
-          '/api/v1/auth/refresh',
-          {},
-          { withCredentials: true }
-        );
-
-        const newAccessToken = data.data.accessToken;
-        setStoredAccessToken(newAccessToken);
+        const newAccessToken = await refreshAccessToken();
         processQueue(null, newAccessToken);
         originalRequest.headers.set('Authorization', `Bearer ${newAccessToken}`);
         return apiClient(originalRequest);
@@ -147,22 +152,22 @@ export const api = {
 
 // Telemetry & IIoT API (v2)
 export const telemetryApi = {
-  getLiveTelemetry: (machineId: string) => 
+  getLiveTelemetry: (machineId: string) =>
     api.get<import('../types').MachineLiveTelemetry>(`/api/v2/telemetry/machines/${machineId}/live`),
-  
-  getTagMappings: (machineId: string) => 
+
+  getTagMappings: (machineId: string) =>
     api.get<import('../types').TagMapping[]>(`/api/v2/telemetry/machines/${machineId}/tags`),
 
-  createTagMapping: (machineId: string, data: import('../types').CreateTagMappingRequest) => 
+  createTagMapping: (machineId: string, data: import('../types').CreateTagMappingRequest) =>
     api.post<import('../types').TagMapping>(`/api/v2/telemetry/machines/${machineId}/tags`, data),
 
-  deleteTagMapping: (machineId: string, mappingId: string) => 
+  deleteTagMapping: (machineId: string, mappingId: string) =>
     api.delete<void>(`/api/v2/telemetry/machines/${machineId}/tags/${mappingId}`),
 
-  ingestBatch: (data: import('../types').TelemetryBatchIngestRequest) => 
+  ingestBatch: (data: import('../types').TelemetryBatchIngestRequest) =>
     api.post<import('../types').TelemetryIngestResponse>('/api/v2/telemetry/ingest', data),
 
-  getHistory: (machineId: string, limit = 50) => 
+  getHistory: (machineId: string, limit = 50) =>
     api.get<import('../types').TelemetryPoint[]>(`/api/v2/telemetry/machines/${machineId}/history`, { limit }),
 
   getTimeSeries: (machineId: string, tag: string, params?: { from?: string; to?: string; bucket?: string }) =>
@@ -249,7 +254,7 @@ export const enterpriseAnalyticsApi = {
       responseType: 'blob',
       baseURL: '',
     });
-    
+
     // Trigger browser file download
     const blob = new Blob([response.data], {
       type: format === 'csv' ? 'text/csv;charset=utf-8;' : 'application/pdf',

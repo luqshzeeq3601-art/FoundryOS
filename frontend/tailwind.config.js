@@ -15,7 +15,7 @@ export default {
           800: '#1d1d22',
           700: '#2b2b33',
           600: '#3e3e48',
-          500: '#5c5c6b',
+          500: '#7f7f91', // lifted from #5c5c6b to pass 4.5:1 on substrate-card
           400: '#8c8c9e',
           300: '#b4b4c4',
           200: '#dcdce5',

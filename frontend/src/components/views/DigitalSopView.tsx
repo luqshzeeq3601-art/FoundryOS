@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { TEST_TOOLS_ENABLED } from '../../config/features';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { sopApi, api } from '../../services/api-client';
 import { 
@@ -190,7 +191,7 @@ export const DigitalSopView: React.FC = () => {
     const randomDefect = defectTypes[Math.floor(Math.random() * defectTypes.length)];
     const mockPhotoUrl = `https://storage.foundryos.internal/defects/${randomDefect}_${Date.now().toString().slice(-6)}.jpg`;
     setPhotoUrl(mockPhotoUrl);
-    setActionMessage(`High-resolution inspection photo captured & SHA-256 hashed`);
+    setActionMessage('Test photo link attached.');
   };
 
   return (
@@ -199,8 +200,8 @@ export const DigitalSopView: React.FC = () => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-substrate-border pb-4">
         <div>
           <div className="flex items-center gap-2 text-hazard-red text-xs font-mono font-bold tracking-widest uppercase">
-            <Sliders size={14} className="animate-pulse" />
-            <span>FOUNDRY//OS DIGITAL EXECUTION SYSTEM // E8-S2</span>
+            <Sliders size={14} aria-hidden="true" />
+            <span>Digital execution</span>
           </div>
           <h1 className="text-xl sm:text-2xl font-mono font-black tracking-wider uppercase text-white mt-1">
             DIGITAL SOP // INTERACTIVE CHECKLISTS & QUALITY GATES
@@ -209,8 +210,8 @@ export const DigitalSopView: React.FC = () => {
 
         <div className="flex flex-wrap items-center gap-2">
           {/* Order Selector */}
-          <div className="flex items-center gap-2 bg-industrial-900 border border-substrate-border px-3 py-1.5 rounded">
-            <span className="text-[10px] font-mono text-industrial-400 uppercase">BIND ORDER:</span>
+          <div className="flex items-center gap-2 bg-industrial-900 border border-substrate-border px-3 py-1.5">
+            <span className="text-xs font-mono text-industrial-400 uppercase">BIND ORDER:</span>
             <select
               value={selectedOrderId || ''}
               onChange={(e) => {
@@ -274,7 +275,7 @@ export const DigitalSopView: React.FC = () => {
       {actionMessage && (
         <div className="bg-industrial-800/80 border border-industrial-600 px-4 py-2 text-xs font-mono text-industrial-200 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-hazard-red animate-ping" />
+            <span className="w-2 h-2 bg-hazard-red animate-ping" />
             <span>{actionMessage}</span>
           </div>
           <button 
@@ -288,14 +289,14 @@ export const DigitalSopView: React.FC = () => {
 
       {/* Grid: Quality Gate Status Header Bar */}
       {selectedOrderId && qualityGate && (
-        <div className={`border p-4 rounded transition-all ${
+        <div className={`border p-4 transition-all ${
           qualityGate.compliant 
             ? 'bg-emerald-950/20 border-emerald-500/50' 
             : 'bg-amber-950/20 border-amber-500/50'
         }`}>
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className={`p-2.5 border rounded ${
+              <div className={`p-2.5 border ${
                 qualityGate.compliant 
                   ? 'bg-emerald-500/10 border-emerald-500 text-emerald-400' 
                   : 'bg-amber-500/10 border-amber-500 text-amber-400'
@@ -314,7 +315,7 @@ export const DigitalSopView: React.FC = () => {
                     GATE: {qualityGate.gateStatus}
                   </IndustrialBadge>
                   {qualityGate.requiresQualityRole && (
-                    <span className="text-[10px] font-mono bg-industrial-800 border border-industrial-600 text-industrial-300 px-2 py-0.5 rounded">
+                    <span className="text-xs font-mono bg-industrial-800 border border-industrial-600 text-industrial-300 px-2 py-0.5">
                       QUALITY ROLE REQUIRED
                     </span>
                   )}
@@ -333,7 +334,7 @@ export const DigitalSopView: React.FC = () => {
                   <div className="text-emerald-400 font-bold flex items-center gap-1 justify-end">
                     <Award size={14} /> SIGNED OFF BY: {qualityGate.signedOffByName}
                   </div>
-                  <div className="text-[10px] text-industrial-400">
+                  <div className="text-xs text-industrial-400">
                     {qualityGate.signedOffAt ? new Date(qualityGate.signedOffAt).toLocaleString() : ''}
                   </div>
                 </div>
@@ -376,7 +377,7 @@ export const DigitalSopView: React.FC = () => {
                   <button
                     key={cat}
                     onClick={() => setSelectedCategory(cat as any)}
-                    className={`px-2.5 py-1 text-[10px] font-mono font-bold uppercase border transition-all ${
+                    className={`px-2.5 py-1 text-xs font-mono font-bold uppercase border transition-all ${
                       selectedCategory === cat
                         ? 'bg-industrial-700 text-white border-industrial-400'
                         : 'bg-industrial-900/50 text-industrial-400 border-substrate-border hover:border-industrial-600'
@@ -389,14 +390,14 @@ export const DigitalSopView: React.FC = () => {
 
               {/* SOP Dropdown */}
               <div>
-                <label className="block text-[10px] font-mono text-industrial-400 uppercase mb-1">
+                <label htmlFor="digital-sop-field-1" className="block text-xs font-mono text-industrial-400 uppercase mb-1">
                   ACTIVE SOP TEMPLATE:
                 </label>
-                <select
+                <select id="digital-sop-field-1"
                   value={selectedSopId || (currentSop ? currentSop.id : '')}
                   onChange={(e) => setSelectedSopId(e.target.value)}
                   aria-label="Select SOP Template"
-                  className="w-full bg-industrial-900 border border-substrate-border px-3 py-2 text-xs font-mono text-white rounded focus:border-hazard-red focus:outline-none"
+                  className="w-full bg-industrial-900 border border-substrate-border px-3 py-2 text-xs font-mono text-white focus:border-hazard-red focus:outline-none"
                 >
                   {sops.map(sop => (
                     <option key={sop.id} value={sop.id}>
@@ -425,7 +426,7 @@ export const DigitalSopView: React.FC = () => {
                     <span className="text-white font-bold">{currentSop.steps?.length || 0} STEPS</span>
                   </div>
                   {currentSop.description && (
-                    <div className="pt-2 border-t border-substrate-border text-industrial-300 text-[11px] leading-relaxed">
+                    <div className="pt-2 border-t border-substrate-border text-industrial-300 text-xs leading-relaxed">
                       {currentSop.description}
                     </div>
                   )}
@@ -434,11 +435,11 @@ export const DigitalSopView: React.FC = () => {
 
               {/* Safety Precautions Alert */}
               {currentSop?.safetyPrecautions && (
-                <div className="bg-amber-950/30 border border-amber-600/40 p-3 rounded">
+                <div className="bg-amber-950/30 border border-amber-600/40 p-3">
                   <div className="flex items-center gap-1.5 text-amber-400 text-xs font-mono font-bold uppercase mb-1">
                     <AlertTriangle size={14} /> SAFETY PRECAUTIONS & PPE:
                   </div>
-                  <p className="text-[11px] font-mono text-amber-200/90 leading-relaxed">
+                  <p className="text-xs font-mono text-amber-200/90 leading-relaxed">
                     {currentSop.safetyPrecautions}
                   </p>
                 </div>
@@ -457,7 +458,7 @@ export const DigitalSopView: React.FC = () => {
               </IndustrialBadge>
             </div>
 
-            <div className="relative bg-black/80 border border-substrate-border rounded overflow-hidden p-4 min-h-[260px] flex flex-col items-center justify-center">
+            <div className="relative bg-black/80 border border-substrate-border overflow-hidden p-4 min-h-[260px] flex flex-col items-center justify-center">
               {/* Grid Background */}
               <div 
                 className="absolute inset-0 opacity-20 pointer-events-none"
@@ -505,13 +506,13 @@ export const DigitalSopView: React.FC = () => {
               <div className="absolute bottom-2 right-2 flex items-center gap-1">
                 <button
                   onClick={() => setCadZoomed(!cadZoomed)}
-                  className="bg-industrial-800/90 hover:bg-industrial-700 text-industrial-300 hover:text-white border border-substrate-border p-1.5 rounded text-xs font-mono flex items-center gap-1"
+                  className="bg-industrial-800/90 hover:bg-industrial-700 text-industrial-300 hover:text-white border border-substrate-border p-1.5 text-xs font-mono flex items-center gap-1"
                 >
                   <Maximize2 size={12} /> {cadZoomed ? 'RESET' : 'ZOOM'}
                 </button>
               </div>
 
-              <div className="absolute top-2 left-2 text-[10px] font-mono text-cyan-400 bg-black/60 px-2 py-0.5 border border-cyan-800 rounded">
+              <div className="absolute top-2 left-2 text-xs font-mono text-cyan-400 bg-black/60 px-2 py-0.5 border border-cyan-800">
                 CALIPER REF: ISO-2768-mK // DIGITAL PROJECTION
               </div>
             </div>
@@ -549,7 +550,7 @@ export const DigitalSopView: React.FC = () => {
                   <button
                     onClick={() => setActiveStepIndex(Math.max(0, activeStepIndex - 1))}
                     disabled={activeStepIndex === 0}
-                    className="p-1 bg-industrial-800 border border-substrate-border text-industrial-300 disabled:opacity-30 rounded hover:text-white"
+                    className="p-1 bg-industrial-800 border border-substrate-border text-industrial-300 disabled:opacity-30 hover:text-white"
                   >
                     <ArrowLeft size={14} />
                   </button>
@@ -559,7 +560,7 @@ export const DigitalSopView: React.FC = () => {
                       setActiveStepIndex(Math.min(maxSteps - 1, activeStepIndex + 1));
                     }}
                     disabled={activeStepIndex >= (activeSession ? activeSession.stepRecords.length - 1 : (currentSop?.steps.length || 1) - 1)}
-                    className="p-1 bg-industrial-800 border border-substrate-border text-industrial-300 disabled:opacity-30 rounded hover:text-white"
+                    className="p-1 bg-industrial-800 border border-substrate-border text-industrial-300 disabled:opacity-30 hover:text-white"
                   >
                     <ArrowRight size={14} />
                   </button>
@@ -580,7 +581,7 @@ export const DigitalSopView: React.FC = () => {
                     <button
                       key={idx}
                       onClick={() => setActiveStepIndex(idx)}
-                      className={`px-2.5 py-1 text-xs font-mono font-bold border rounded transition-all flex items-center gap-1 ${dotColor}`}
+                      className={`px-2.5 py-1 text-xs font-mono font-bold border transition-all flex items-center gap-1 ${dotColor}`}
                     >
                       <span>#{idx + 1}</span>
                       {status === 'PASSED' && <CheckCircle2 size={10} />}
@@ -596,7 +597,7 @@ export const DigitalSopView: React.FC = () => {
                   const step = (currentRecord || currentSop?.steps[activeStepIndex]) as any;
                   return (
                     <div className="space-y-4 pt-2">
-                      <div className="bg-industrial-900 border border-substrate-border p-4 rounded space-y-2">
+                      <div className="bg-industrial-900 border border-substrate-border p-4 space-y-2">
                         <div className="flex items-center justify-between">
                           <h3 className="text-sm font-mono font-bold text-white uppercase">
                             {step.stepNumber}. {step.title || step.stepTitle}
@@ -612,7 +613,7 @@ export const DigitalSopView: React.FC = () => {
 
                       {/* Safety Alert for Step */}
                       {step.safetyAlert && (
-                        <div className="bg-hazard-red/10 border border-hazard-red/30 p-2.5 rounded text-xs font-mono text-hazard-red flex items-center gap-2">
+                        <div className="bg-hazard-red/10 border border-hazard-red/30 p-2.5 text-xs font-mono text-hazard-red flex items-center gap-2">
                           <AlertTriangle size={14} className="shrink-0" />
                           <span>CAUTION: {step.safetyAlert}</span>
                         </div>
@@ -620,44 +621,44 @@ export const DigitalSopView: React.FC = () => {
 
                       {/* Interactive Step Input Console */}
                       {activeSession && (
-                        <div className="border border-substrate-border bg-substrate-card/40 p-4 rounded space-y-4">
+                        <div className="border border-substrate-border bg-substrate-card/40 p-4 space-y-4">
                           <div className="text-xs font-mono font-bold text-industrial-300 uppercase tracking-wider">
                             OPERATOR INSPECTION CONSOLE:
                           </div>
 
                           {/* 1. Numeric Measurement with Live Tolerance Bounds */}
                           {step.stepType === 'NUMERIC_MEASUREMENT' && (
-                            <div className="space-y-3 bg-black/40 border border-substrate-border p-3 rounded">
+                            <div className="space-y-3 bg-black/40 border border-substrate-border p-3">
                               <div className="grid grid-cols-3 gap-2 text-center text-xs font-mono">
-                                <div className="p-2 bg-industrial-900 border border-substrate-border rounded">
-                                  <div className="text-[10px] text-industrial-400">MIN TOLERANCE</div>
+                                <div className="p-2 bg-industrial-900 border border-substrate-border">
+                                  <div className="text-xs text-industrial-400">MIN TOLERANCE</div>
                                   <div className="text-white font-bold">{step.minTolerance} {step.unitOfMeasure}</div>
                                 </div>
-                                <div className="p-2 bg-industrial-900 border border-substrate-border rounded">
-                                  <div className="text-[10px] text-industrial-400">NOMINAL TARGET</div>
+                                <div className="p-2 bg-industrial-900 border border-substrate-border">
+                                  <div className="text-xs text-industrial-400">NOMINAL TARGET</div>
                                   <div className="text-cyan-400 font-bold">{step.nominalValue} {step.unitOfMeasure}</div>
                                 </div>
-                                <div className="p-2 bg-industrial-900 border border-substrate-border rounded">
-                                  <div className="text-[10px] text-industrial-400">MAX TOLERANCE</div>
+                                <div className="p-2 bg-industrial-900 border border-substrate-border">
+                                  <div className="text-xs text-industrial-400">MAX TOLERANCE</div>
                                   <div className="text-white font-bold">{step.maxTolerance} {step.unitOfMeasure}</div>
                                 </div>
                               </div>
 
                               <div>
-                                <label className="block text-[10px] font-mono text-industrial-400 uppercase mb-1">
+                                <label htmlFor={`sop-step-field-1-${step.id}`} className="block text-xs font-mono text-industrial-400 uppercase mb-1">
                                   ENTER MEASUREMENT READING ({step.unitOfMeasure || 'mm'}):
                                 </label>
                                 <div className="flex items-center gap-2">
-                                  <input
+                                  <input id={`sop-step-field-1-${step.id}`}
                                     type="number"
                                     step="0.001"
                                     value={numericInput}
                                     onChange={(e) => setNumericInput(e.target.value)}
                                     placeholder={`e.g. ${step.nominalValue || 12.5}`}
-                                    className="flex-1 bg-industrial-900 border border-substrate-border px-3 py-2 text-sm font-mono font-bold text-white rounded focus:border-hazard-red focus:outline-none"
+                                    className="flex-1 bg-industrial-900 border border-substrate-border px-3 py-2 text-sm font-mono font-bold text-white focus:border-hazard-red focus:outline-none"
                                   />
                                   {liveToleranceStatus && (
-                                    <div className={`px-3 py-2 rounded text-xs font-mono font-bold flex items-center gap-1.5 ${
+                                    <div className={`px-3 py-2 text-xs font-mono font-bold flex items-center gap-1.5 ${
                                       liveToleranceStatus === 'WITHIN'
                                         ? 'bg-emerald-950 border border-emerald-500 text-emerald-400'
                                         : 'bg-red-950 border border-red-500 text-red-400'
@@ -673,22 +674,37 @@ export const DigitalSopView: React.FC = () => {
 
                           {/* 2. Photo Capture / Defect Snapshot */}
                           {step.stepType === 'PHOTO_CAPTURE' && (
-                            <div className="space-y-3 bg-black/40 border border-substrate-border p-3 rounded">
-                              <div className="flex items-center justify-between">
-                                <span className="text-xs font-mono text-industrial-300">DEFECT & SURFACE EVIDENCE PHOTO:</span>
-                                <IndustrialButton
-                                  variant="secondary"
-                                  size="sm"
-                                  onClick={handleSimulatePhotoSnap}
-                                >
-                                  <Camera size={14} className="mr-1 text-hazard-red" />
-                                  CAPTURE INSPECTION SNAP
-                                </IndustrialButton>
+                            <div className="space-y-3 bg-black/40 border border-substrate-border p-3">
+                              <div className="flex flex-col sm:flex-row sm:items-end gap-2">
+                                <div className="flex-1">
+                                  <label htmlFor={`photo-evidence-${step.id}`} className="block text-xs font-mono text-industrial-300 mb-1">
+                                    Photo evidence link
+                                  </label>
+                                  <input
+                                    id={`photo-evidence-${step.id}`}
+                                    type="url"
+                                    inputMode="url"
+                                    value={photoUrl}
+                                    onChange={(e) => setPhotoUrl(e.target.value)}
+                                    placeholder="https://…"
+                                    aria-describedby={`photo-evidence-help-${step.id}`}
+                                    className="w-full bg-industrial-900 border border-substrate-border px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-industrial-300"
+                                  />
+                                  <p id={`photo-evidence-help-${step.id}`} className="text-xs text-industrial-400 mt-1">
+                                    Paste the link to the inspection photo in your plant's image store.
+                                  </p>
+                                </div>
+                                {TEST_TOOLS_ENABLED && (
+                                  <IndustrialButton variant="secondary" size="sm" onClick={handleSimulatePhotoSnap}>
+                                    <Camera size={14} className="mr-1 text-hazard-red" aria-hidden="true" />
+                                    Test photo
+                                  </IndustrialButton>
+                                )}
                               </div>
 
                               {photoUrl && (
-                                <div className="relative bg-industrial-900 border border-emerald-500/50 p-3 rounded space-y-1">
-                                  <div className="flex items-center justify-between text-[10px] font-mono text-emerald-400">
+                                <div className="relative bg-industrial-900 border border-emerald-500/50 p-3 space-y-1">
+                                  <div className="flex items-center justify-between text-xs font-mono text-emerald-400">
                                     <span className="flex items-center gap-1"><CheckCircle2 size={12} /> EVIDENCE ATTACHED</span>
                                     <span>TIMESTAMP: {new Date().toLocaleTimeString()}</span>
                                   </div>
@@ -700,17 +716,17 @@ export const DigitalSopView: React.FC = () => {
 
                           {/* 3. Barcode Scanner */}
                           {step.stepType === 'BARCODE_SCAN' && (
-                            <div className="space-y-2 bg-black/40 border border-substrate-border p-3 rounded">
-                              <label className="block text-[10px] font-mono text-industrial-400 uppercase">
+                            <div className="space-y-2 bg-black/40 border border-substrate-border p-3">
+                              <label htmlFor={`sop-step-field-2-${step.id}`} className="block text-xs font-mono text-industrial-400 uppercase">
                                 SCAN COMPONENT / MATERIAL LOT BARCODE:
                               </label>
                               <div className="flex items-center gap-2">
-                                <input
+                                <input id={`sop-step-field-2-${step.id}`}
                                   type="text"
                                   value={barcodeInput}
                                   onChange={(e) => setBarcodeInput(e.target.value)}
                                   placeholder="e.g. LOT-INCONEL-718-9921"
-                                  className="flex-1 bg-industrial-900 border border-substrate-border px-3 py-2 text-xs font-mono text-white rounded focus:border-hazard-red focus:outline-none"
+                                  className="flex-1 bg-industrial-900 border border-substrate-border px-3 py-2 text-xs font-mono text-white focus:border-hazard-red focus:outline-none"
                                 />
                                 <IndustrialButton
                                   variant="secondary"
@@ -725,15 +741,15 @@ export const DigitalSopView: React.FC = () => {
 
                           {/* Operator Notes */}
                           <div>
-                            <label className="block text-[10px] font-mono text-industrial-400 uppercase mb-1">
+                            <label htmlFor="digital-sop-field-2" className="block text-xs font-mono text-industrial-400 uppercase mb-1">
                               INSPECTOR / OPERATOR NOTES (OPTIONAL):
                             </label>
-                            <input
+                            <input id="digital-sop-field-2"
                               type="text"
                               value={stepNotes}
                               onChange={(e) => setStepNotes(e.target.value)}
                               placeholder="e.g. Micrometer zeroed before measurement. Surface clean."
-                              className="w-full bg-industrial-900 border border-substrate-border px-3 py-2 text-xs font-mono text-white rounded focus:border-hazard-red focus:outline-none"
+                              className="w-full bg-industrial-900 border border-substrate-border px-3 py-2 text-xs font-mono text-white focus:border-hazard-red focus:outline-none"
                             />
                           </div>
 
@@ -742,7 +758,7 @@ export const DigitalSopView: React.FC = () => {
                             <button
                               onClick={() => handleRecordStep('FAILED')}
                               disabled={recordStepMutation.isPending}
-                              className="px-4 py-2 bg-red-950/60 hover:bg-red-900 border border-red-600 text-red-300 hover:text-white rounded text-xs font-mono font-bold uppercase transition-all"
+                              className="px-4 py-2 bg-red-950/60 hover:bg-red-900 border border-red-600 text-red-300 hover:text-white text-xs font-mono font-bold uppercase transition-all"
                             >
                               FLAG STEP AS FAILED
                             </button>
@@ -779,7 +795,7 @@ export const DigitalSopView: React.FC = () => {
         title="QUALITY SIGN-OFF GATE // APPROVAL STAMP"
       >
         <div className="space-y-4">
-          <div className="bg-industrial-900 border border-substrate-border p-3 rounded space-y-2 text-xs font-mono">
+          <div className="bg-industrial-900 border border-substrate-border p-3 space-y-2 text-xs font-mono">
             <div className="flex items-center justify-between">
               <span className="text-industrial-400">PRODUCTION ORDER:</span>
               <span className="text-white font-bold">{qualityGate?.orderNumber}</span>
@@ -795,23 +811,23 @@ export const DigitalSopView: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-[10px] font-mono text-industrial-400 uppercase mb-1">
+            <label htmlFor="digital-sop-field-3" className="block text-xs font-mono text-industrial-400 uppercase mb-1">
               QUALITY AUTHORITY COMMENTS & AUDIT NOTES:
             </label>
-            <textarea
+            <textarea id="digital-sop-field-3"
               value={signOffNotes}
               onChange={(e) => setSignOffNotes(e.target.value)}
               rows={3}
-              className="w-full bg-industrial-900 border border-substrate-border p-2.5 text-xs font-mono text-white rounded focus:border-hazard-red focus:outline-none"
+              className="w-full bg-industrial-900 border border-substrate-border p-2.5 text-xs font-mono text-white focus:border-hazard-red focus:outline-none"
             />
           </div>
 
           {/* Stamp Preview */}
-          <div className="border-2 border-dashed border-emerald-500/60 p-4 rounded text-center bg-emerald-950/20 space-y-1 font-mono">
+          <div className="border-2 border-dashed border-emerald-500/60 p-4 text-center bg-emerald-950/20 space-y-1 font-mono">
             <div className="text-emerald-400 font-black text-sm uppercase tracking-widest flex items-center justify-center gap-1.5">
               <Award size={18} /> QUALITY APPROVED & VERIFIED
             </div>
-            <div className="text-[10px] text-emerald-300">
+            <div className="text-xs text-emerald-300">
               FOUNDRY//OS CRYPTOGRAPHIC AUDIT LOCK // ISO-9001 COMPLIANT
             </div>
           </div>

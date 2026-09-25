@@ -6,6 +6,7 @@ export const PlantSwitcher: React.FC = () => {
   const { activePlant, authorizedPlants, switchPlant } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [isSwitching, setIsSwitching] = useState(false);
+  const [switchError, setSwitchError] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -14,8 +15,15 @@ export const PlantSwitcher: React.FC = () => {
         setIsOpen(false);
       }
     };
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsOpen(false);
+    };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
   }, []);
 
   const handleSelectPlant = async (plantId: string) => {
@@ -26,10 +34,11 @@ export const PlantSwitcher: React.FC = () => {
 
     try {
       setIsSwitching(true);
+      setSwitchError(null);
       await switchPlant(plantId);
       setIsOpen(false);
-    } catch (err) {
-      console.error('Failed to switch plant:', err);
+    } catch {
+      setSwitchError('Could not switch plant. Try again.');
     } finally {
       setIsSwitching(false);
     }
@@ -50,7 +59,9 @@ export const PlantSwitcher: React.FC = () => {
             ? 'bg-industrial-800 border-hazard-red text-white'
             : 'bg-industrial-900/80 border-substrate-border text-industrial-200 hover:border-industrial-500 hover:text-white'
         } ${authorizedPlants.length <= 1 ? 'cursor-default' : 'cursor-pointer'}`}
-        title={authorizedPlants.length > 1 ? 'Click to switch active manufacturing plant' : 'Active Plant'}
+        aria-haspopup={authorizedPlants.length > 1 ? 'listbox' : undefined}
+        aria-expanded={authorizedPlants.length > 1 ? isOpen : undefined}
+        aria-label={`Active plant: ${activePlant ? `${activePlant.code}, ${activePlant.name}` : 'none selected'}${authorizedPlants.length > 1 ? '. Change plant' : ''}`}
       >
         <Building2 size={13} className="text-hazard-red shrink-0" />
         <div className="flex flex-col items-start leading-tight">
@@ -59,11 +70,11 @@ export const PlantSwitcher: React.FC = () => {
               {activePlant ? activePlant.code : 'SELECT PLANT'}
             </span>
             {activePlant?.status === 'ACTIVE' && (
-              <span className="w-1.5 h-1.5 bg-terminal-green rounded-full animate-pulse" />
+              <span className="w-1.5 h-1.5 bg-terminal-green" />
             )}
           </div>
           {activePlant && (
-            <span className="text-[10px] text-industrial-400 truncate max-w-[120px] sm:max-w-[160px]">
+            <span className="text-xs text-industrial-400 truncate max-w-[120px] sm:max-w-[160px]">
               {activePlant.name}
             </span>
           )}
@@ -78,18 +89,25 @@ export const PlantSwitcher: React.FC = () => {
 
       {isOpen && authorizedPlants.length > 1 && (
         <div className="absolute left-0 mt-1 w-72 bg-substrate-dark border border-substrate-border shadow-2xl z-50 py-1">
-          <div className="px-3 py-1.5 border-b border-substrate-border text-[10px] font-mono text-industrial-400 uppercase tracking-wider flex justify-between items-center">
-            <span>AUTHORIZED SITES ({authorizedPlants.length})</span>
-            <span className="text-industrial-500 text-[9px]">TENANT ISOLATION ON</span>
+          <div className="px-3 py-1.5 border-b border-substrate-border text-xs font-mono text-industrial-400 uppercase tracking-wider flex justify-between items-center">
+            <span>Plants ({authorizedPlants.length})</span>
+
           </div>
 
-          <div className="max-h-60 overflow-y-auto divide-y divide-substrate-border/40">
+          {switchError && (
+            <p role="alert" className="px-3 py-2 text-xs text-hazard-red border-b border-substrate-border">
+              {switchError}
+            </p>
+          )}
+          <div role="listbox" aria-label="Authorized plants" className="max-h-60 overflow-y-auto divide-y divide-substrate-border/40">
             {authorizedPlants.map((plant) => {
               const isSelected = activePlant?.id === plant.id;
               return (
                 <button
                   key={plant.id}
                   type="button"
+                  role="option"
+                  aria-selected={isSelected}
                   onClick={() => handleSelectPlant(plant.id)}
                   disabled={isSwitching}
                   className={`w-full text-left px-3 py-2 flex items-center justify-between transition-colors ${
@@ -101,7 +119,7 @@ export const PlantSwitcher: React.FC = () => {
                   <div className="flex flex-col">
                     <div className="flex items-center gap-2">
                       <span className="font-mono text-xs font-bold">{plant.code}</span>
-                      <span className={`text-[9px] px-1 py-0.2 border ${
+                      <span className={`text-xs px-1 py-0.5 border ${
                         plant.status === 'ACTIVE'
                           ? 'border-terminal-green/40 text-terminal-green'
                           : 'border-hazard-amber/40 text-hazard-amber'
@@ -109,9 +127,9 @@ export const PlantSwitcher: React.FC = () => {
                         {plant.status}
                       </span>
                     </div>
-                    <span className="text-[11px] text-industrial-400 font-sans mt-0.5">{plant.name}</span>
+                    <span className="text-xs text-industrial-400 font-sans mt-0.5">{plant.name}</span>
                     {plant.timezone && (
-                      <span className="text-[9px] font-mono text-industrial-500">{plant.timezone}</span>
+                      <span className="text-xs font-mono text-industrial-500">{plant.timezone}</span>
                     )}
                   </div>
 

@@ -37,12 +37,13 @@ export const IndustrialButton: React.FC<IndustrialButtonProps> = ({
     <button
       className={twMerge(clsx(baseStyles, sizeStyles[size], variantStyles[variant], className))}
       disabled={disabled || isLoading}
+      aria-busy={isLoading || undefined}
       {...props}
     >
       {isLoading ? (
         <span className="flex items-center gap-2">
-          <span className="inline-block w-3.5 h-3.5 border-2 border-current border-t-transparent animate-spin" />
-          <span>PROCESSING...</span>
+          <span className="inline-block w-3.5 h-3.5 border-2 border-current border-t-transparent animate-spin" aria-hidden="true" />
+          <span>Working…</span>
         </span>
       ) : (
         children

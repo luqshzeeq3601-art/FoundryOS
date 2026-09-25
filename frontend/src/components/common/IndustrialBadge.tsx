@@ -28,7 +28,7 @@ export const IndustrialBadge: React.FC<IndustrialBadgeProps> = ({
     }
   };
 
-  const sizeClass = size === 'sm' ? 'px-1.5 py-0.5 text-[10px]' : 'px-2 py-1 text-xs';
+  const sizeClass = size === 'sm' ? 'px-1.5 py-0.5 text-xs' : 'px-2 py-1 text-xs';
 
   return (
     <span

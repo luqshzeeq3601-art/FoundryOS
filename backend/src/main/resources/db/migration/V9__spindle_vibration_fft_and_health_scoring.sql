@@ -101,10 +101,15 @@ ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO vibration_spectral_peaks (
     id, burst_id, frequency_hz, amplitude_mm_s, order_multiple, fault_harmonic_type, confidence
-) VALUES
-    ('00000000-0000-0000-0000-000000000911', '00000000-0000-0000-0000-000000000901', 50.0, 1.15, 1.0, '1X_RPM', 0.98),
-    ('00000000-0000-0000-0000-000000000912', '00000000-0000-0000-0000-000000000901', 100.0, 0.22, 2.0, 'MISALIGNMENT_2X', 0.85),
-    ('00000000-0000-0000-0000-000000000913', '00000000-0000-0000-0000-000000000901', 150.0, 0.08, 3.0, 'LOOSENESS_3X', 0.70)
+)
+SELECT
+    v.id, v.burst_id, v.frequency_hz, v.amplitude_mm_s, v.order_multiple, v.fault_harmonic_type, v.confidence
+FROM (VALUES
+    ('00000000-0000-0000-0000-000000000911'::uuid, '00000000-0000-0000-0000-000000000901'::uuid, 50.0, 1.15, 1.0, '1X_RPM', 0.98),
+    ('00000000-0000-0000-0000-000000000912'::uuid, '00000000-0000-0000-0000-000000000901'::uuid, 100.0, 0.22, 2.0, 'MISALIGNMENT_2X', 0.85),
+    ('00000000-0000-0000-0000-000000000913'::uuid, '00000000-0000-0000-0000-000000000901'::uuid, 150.0, 0.08, 3.0, 'LOOSENESS_3X', 0.70)
+) AS v(id, burst_id, frequency_hz, amplitude_mm_s, order_multiple, fault_harmonic_type, confidence)
+WHERE EXISTS (SELECT 1 FROM vibration_burst_samples WHERE id = v.burst_id)
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO machine_health_assessments (

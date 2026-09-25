@@ -26,6 +26,7 @@ import { IndustrialButton } from './IndustrialButton';
 import { IndustrialBadge } from './IndustrialBadge';
 import { useHardwareBarcodeScanner } from '../../hooks/useHardwareBarcodeScanner';
 import { triggerScanFeedback } from '../../utils/audioFeedback';
+import { TEST_TOOLS_ENABLED } from '../../config/features';
 
 interface BarcodeScannerModalProps {
   isOpen: boolean;
@@ -138,8 +139,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
         );
       }
     } catch (err: any) {
-      console.error('Camera initialization failed:', err);
-      setCameraError(err.message || 'Camera access unavailable. Use hardware scanner or manual simulation.');
+      setCameraError(err.message || 'Camera is unavailable. Use a handheld scanner or enter the code manually.');
     }
   }, [facingMode, handleScanPayload, isOpen]);
 
@@ -178,6 +178,15 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
     };
   }, [isOpen, activeTab, startCamera, stopCamera]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const getValidationBadge = (status: BarcodeValidationStatus) => {
@@ -201,17 +210,22 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-sm animate-fade-in font-mono">
-      <div className="bg-substrate-card border-2 border-industrial-600 w-full max-w-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/85 font-mono">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="barcode-scanner-title"
+        className="bg-substrate-card border-2 border-industrial-600 w-full max-w-3xl max-h-[92vh] flex flex-col overflow-hidden"
+      >
         {/* Modal Header */}
         <div className="bg-industrial-900 border-b border-substrate-border p-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Scan size={20} className="text-cyan-400" />
             <div>
-              <div className="text-[10px] uppercase tracking-widest text-industrial-500">
-                [ SPRINT 7 // E8-S1 ] TRACEABILITY & WEDGE ENGINE
+              <div className="text-xs uppercase tracking-widest text-industrial-500">
+                Traceability scan
               </div>
-              <h2 className="text-base sm:text-lg font-bold uppercase text-white tracking-wide">
+              <h2 id="barcode-scanner-title" className="text-base sm:text-lg font-bold uppercase text-white tracking-wide">
                 {title}
               </h2>
             </div>
@@ -219,15 +233,17 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
 
           <div className="flex items-center gap-2">
             {isReceivingWedge && (
-              <span className="text-[10px] px-2 py-0.5 bg-cyan-950 text-cyan-400 border border-cyan-800 animate-pulse font-bold">
-                ⚡ WEDGE RECEIVING
+              <span role="status" className="text-xs px-2 py-0.5 bg-cyan-950 text-cyan-400 border border-cyan-800 font-bold">
+                Receiving scan…
               </span>
             )}
             <button
+              type="button"
               onClick={onClose}
-              className="p-1.5 text-industrial-400 hover:text-white hover:bg-industrial-800 transition-colors"
+              aria-label="Close scanner"
+              className="touch-target flex items-center justify-center text-industrial-400 hover:text-white hover:bg-industrial-800 transition-colors"
             >
-              <X size={20} />
+              <X size={20} aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -254,7 +270,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
             }`}
           >
             <QrCode size={15} />
-            <span>HARDWARE WEDGE & FAST SIMULATOR</span>
+            <span>Scanner or manual entry</span>
           </button>
         </div>
 
@@ -273,7 +289,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
 
                 {/* Industrial Laser Aiming Reticle */}
                 <div className="absolute inset-8 sm:inset-12 pointer-events-none border border-cyan-500/40 flex items-center justify-center">
-                  <div className="w-full h-0.5 bg-cyan-400/80 shadow-[0_0_8px_#22d3ee] animate-pulse" />
+                  <div className="w-full h-0.5 bg-cyan-400/80" />
                   <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-cyan-400" />
                   <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-cyan-400" />
                   <div className="absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2 border-cyan-400" />
@@ -289,18 +305,19 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
                         ? 'bg-amber-400 text-black border-amber-300 font-bold'
                         : 'bg-industrial-900/80 text-white border-substrate-border hover:bg-industrial-800'
                     }`}
-                    title="Toggle Flashlight"
+                    aria-label={torchOn ? 'Turn flashlight off' : 'Turn flashlight on'}
+                    aria-pressed={torchOn}
                   >
-                    <Flashlight size={14} />
+                    <Flashlight size={14} aria-hidden="true" />
                   </button>
                   <button
                     onClick={() => {
                       setFacingMode((m) => (m === 'environment' ? 'user' : 'environment'));
                     }}
                     className="p-2 bg-industrial-900/80 text-white border border-substrate-border hover:bg-industrial-800 text-xs"
-                    title="Switch Camera"
+                    aria-label="Switch camera"
                   >
-                    <RefreshCw size={14} />
+                    <RefreshCw size={14} aria-hidden="true" />
                   </button>
                 </div>
 
@@ -314,14 +331,13 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
                       className="mt-3"
                       onClick={() => setActiveTab('wedge')}
                     >
-                      SWITCH TO MANUAL / WEDGE SIMULATOR
+                      Enter code manually
                     </IndustrialButton>
                   </div>
                 )}
               </div>
-              <div className="text-[11px] text-industrial-400 flex items-center justify-between">
-                <span>[ CAMERA SCAN ]: Align QR, DataMatrix, or Code128 within reticle.</span>
-                <span className="text-cyan-400 font-bold">ZXING-WASM ACTIVE</span>
+              <div className="text-xs text-industrial-400 flex items-center justify-between">
+                <span>Hold the QR, DataMatrix or Code 128 label inside the frame.</span>
               </div>
             </div>
           ) : (
@@ -329,12 +345,11 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
               {/* Hardware Wedge Status Banner */}
               <div className="p-3 bg-industrial-900 border border-substrate-border flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <div className="w-2.5 h-2.5 bg-emerald-400" aria-hidden="true" />
                   <span className="text-xs text-white font-bold">
-                    ZEBRA DATAWEDGE / HONEYWELL HID READY
+                    Handheld scanner ready
                   </span>
                 </div>
-                <span className="text-[10px] text-industrial-400">BURST &le;60ms LISTENER ACTIVE</span>
               </div>
 
               {/* Manual Input Form */}
@@ -347,6 +362,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
               >
                 <input
                   type="text"
+                  aria-label="Barcode value"
                   value={manualCode}
                   onChange={(e) => setManualCode(e.target.value)}
                   placeholder="Scan with handheld or type barcode payload..."
@@ -359,14 +375,15 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
                   isLoading={scanMutation.isPending}
                 >
                   <Scan size={14} className="mr-1" />
-                  <span>VERIFY</span>
+                  <span>Verify</span>
                 </IndustrialButton>
               </form>
 
-              {/* 1-Touch Simulation Matrix */}
+              {/* Test barcodes (test tools only) */}
+              {TEST_TOOLS_ENABLED && (
               <div>
                 <div className="text-xs font-mono uppercase text-industrial-400 mb-2">
-                  [ 1-TOUCH TEST BARCODE SIMULATORS ]:
+                  Test barcodes
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   <button
@@ -374,12 +391,12 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
                       setManualCode('ORD:ORD-2026-001');
                       handleScanPayload('ORD:ORD-2026-001', 'MANUAL_KEYPAD');
                     }}
-                    className="p-2 text-left bg-industrial-900 border border-emerald-800/60 hover:border-emerald-500 text-[11px] text-emerald-300"
+                    className="p-2 text-left bg-industrial-900 border border-emerald-800/60 hover:border-emerald-500 text-xs text-emerald-300"
                   >
                     <div className="font-bold flex items-center gap-1">
                       <Package size={12} /> ORD:ORD-2026-001
                     </div>
-                    <div className="text-[10px] text-industrial-400">Valid Order Traveler</div>
+                    <div className="text-xs text-industrial-400">Valid Order Traveler</div>
                   </button>
 
                   <button
@@ -387,12 +404,12 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
                       setManualCode('LOT:LOT-ALU-6061-001');
                       handleScanPayload('LOT:LOT-ALU-6061-001', 'MANUAL_KEYPAD');
                     }}
-                    className="p-2 text-left bg-industrial-900 border border-cyan-800/60 hover:border-cyan-500 text-[11px] text-cyan-300"
+                    className="p-2 text-left bg-industrial-900 border border-cyan-800/60 hover:border-cyan-500 text-xs text-cyan-300"
                   >
                     <div className="font-bold flex items-center gap-1">
                       <CheckCircle size={12} /> LOT:LOT-ALU-6061-001
                     </div>
-                    <div className="text-[10px] text-industrial-400">BOM Matched Material</div>
+                    <div className="text-xs text-industrial-400">BOM Matched Material</div>
                   </button>
 
                   <button
@@ -400,12 +417,12 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
                       setManualCode('LOT:LOT-STL-4140-002');
                       handleScanPayload('LOT:LOT-STL-4140-002', 'MANUAL_KEYPAD');
                     }}
-                    className="p-2 text-left bg-industrial-900 border border-amber-800/60 hover:border-amber-500 text-[11px] text-amber-300"
+                    className="p-2 text-left bg-industrial-900 border border-amber-800/60 hover:border-amber-500 text-xs text-amber-300"
                   >
                     <div className="font-bold flex items-center gap-1">
                       <AlertTriangle size={12} /> LOT:LOT-STL-4140-002
                     </div>
-                    <div className="text-[10px] text-industrial-400">BOM Mismatch Material</div>
+                    <div className="text-xs text-industrial-400">BOM Mismatch Material</div>
                   </button>
 
                   <button
@@ -413,12 +430,12 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
                       setManualCode('LOT:LOT-EXP-RESIN-004');
                       handleScanPayload('LOT:LOT-EXP-RESIN-004', 'MANUAL_KEYPAD');
                     }}
-                    className="p-2 text-left bg-industrial-900 border border-red-800/60 hover:border-red-500 text-[11px] text-hazard-red"
+                    className="p-2 text-left bg-industrial-900 border border-red-800/60 hover:border-red-500 text-xs text-hazard-red"
                   >
                     <div className="font-bold flex items-center gap-1">
                       <AlertOctagon size={12} /> LOT:LOT-EXP-RESIN-004
                     </div>
-                    <div className="text-[10px] text-industrial-400">Expired Raw Material</div>
+                    <div className="text-xs text-industrial-400">Expired Raw Material</div>
                   </button>
 
                   <button
@@ -426,12 +443,12 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
                       setManualCode('MACH:CNC-01');
                       handleScanPayload('MACH:CNC-01', 'MANUAL_KEYPAD');
                     }}
-                    className="p-2 text-left bg-industrial-900 border border-substrate-border hover:border-industrial-400 text-[11px] text-white"
+                    className="p-2 text-left bg-industrial-900 border border-substrate-border hover:border-industrial-400 text-xs text-white"
                   >
                     <div className="font-bold flex items-center gap-1">
                       <Cpu size={12} /> MACH:CNC-01
                     </div>
-                    <div className="text-[10px] text-industrial-400">Machine Asset Badge</div>
+                    <div className="text-xs text-industrial-400">Machine Asset Badge</div>
                   </button>
 
                   <button
@@ -439,15 +456,16 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
                       setManualCode('OPR:operator@foundryos.local');
                       handleScanPayload('OPR:operator@foundryos.local', 'MANUAL_KEYPAD');
                     }}
-                    className="p-2 text-left bg-industrial-900 border border-purple-800/60 hover:border-purple-500 text-[11px] text-purple-300"
+                    className="p-2 text-left bg-industrial-900 border border-purple-800/60 hover:border-purple-500 text-xs text-purple-300"
                   >
                     <div className="font-bold flex items-center gap-1">
                       <UserCheck size={12} /> OPR:operator@...
                     </div>
-                    <div className="text-[10px] text-industrial-400">Operator Employee Badge</div>
+                    <div className="text-xs text-industrial-400">Operator Employee Badge</div>
                   </button>
                 </div>
               </div>
+              )}
             </div>
           )}
 
@@ -469,7 +487,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
                     TYPE: <span className="text-white font-bold">{lastResponse.barcodeType}</span>
                   </span>
                 </div>
-                <div className="flex items-center gap-1 text-[11px] text-cyan-400 font-bold">
+                <div className="flex items-center gap-1 text-xs text-cyan-400 font-bold">
                   <Clock size={12} />
                   <span>SLA: {lastResponse.executionLatencyMs}ms (&lt;300ms PASS)</span>
                 </div>
@@ -499,7 +517,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
               </div>
 
               {lastResponse.entityData && (
-                <div className="mt-3 pt-2 border-t border-substrate-border/60 text-[11px] text-industrial-300 flex flex-wrap gap-3">
+                <div className="mt-3 pt-2 border-t border-substrate-border/60 text-xs text-industrial-300 flex flex-wrap gap-3">
                   {lastResponse.entityData.productCode && (
                     <div>PRODUCT: <span className="text-white font-bold">{lastResponse.entityData.productCode}</span></div>
                   )}
@@ -520,7 +538,7 @@ export const BarcodeScannerModal: React.FC<BarcodeScannerModalProps> = ({
 
         {/* Modal Footer */}
         <div className="p-3 bg-industrial-900 border-t border-substrate-border flex items-center justify-between">
-          <div className="text-[11px] text-industrial-500">
+          <div className="text-xs text-industrial-500">
             [ AUDIO / HAPTIC FEEDBACK ACTIVE ]
           </div>
           <IndustrialButton

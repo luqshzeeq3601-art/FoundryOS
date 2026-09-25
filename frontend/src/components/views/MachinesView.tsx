@@ -5,8 +5,25 @@ import { MachineDto, MachineStatus, PagedResponse, CreateMachineRequest, UpdateM
 import { IndustrialButton } from '../common/IndustrialButton';
 import { StatusBeacon } from '../common/StatusBeacon';
 import { Modal } from '../common/Modal';
+import { ConfirmDialog } from '../common/ConfirmDialog';
+import { ErrorState } from '../common/ErrorState';
+import { Banner } from '../common/Banner';
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { useAuth } from '../../context/AuthContext';
 import { Plus, Search, Edit2, Power, Trash2, Cpu } from 'lucide-react';
+
+const ROW_ACTION_CLASS =
+  'w-11 h-11 flex items-center justify-center bg-industrial-900 border border-substrate-border hover:border-industrial-400 text-industrial-300 hover:text-white';
+
+const FIELD_CLASS =
+  'w-full bg-industrial-900 border border-substrate-border px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-industrial-300';
+
+const DialogError: React.FC<{ message: string | null }> = ({ message }) =>
+  message ? (
+    <div role="alert" className="p-3 bg-red-950/80 border border-hazard-red text-hazard-red text-xs font-mono">
+      {message}
+    </div>
+  ) : null;
 
 export const MachinesView: React.FC = () => {
   const { hasRole, isAdmin } = useAuth();
@@ -14,7 +31,9 @@ export const MachinesView: React.FC = () => {
 
   const [statusFilter, setStatusFilter] = useState<MachineStatus | ''>('');
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearch = useDebouncedValue(searchTerm.trim());
   const [page, setPage] = useState(0);
+  const [archiveTarget, setArchiveTarget] = useState<MachineDto | null>(null);
 
   // Modals state
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -30,12 +49,19 @@ export const MachinesView: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Fetch Machines
-  const { data: machinesData, isLoading } = useQuery<PagedResponse<MachineDto>>({
-    queryKey: ['machines', statusFilter, searchTerm, page],
+  const {
+    data: machinesData,
+    isLoading,
+    isError,
+    error: loadError,
+    refetch,
+    isFetching,
+  } = useQuery<PagedResponse<MachineDto>>({
+    queryKey: ['machines', statusFilter, debouncedSearch, page],
     queryFn: () =>
       api.get<PagedResponse<MachineDto>>('/machines', {
         status: statusFilter || undefined,
-        search: searchTerm || undefined,
+        search: debouncedSearch || undefined,
         page,
         size: 15,
       }),
@@ -90,9 +116,11 @@ export const MachinesView: React.FC = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['machines'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
+      setArchiveTarget(null);
     },
     onError: (err: any) => {
-      setErrorMessage(err.response?.data?.error?.message || 'Failed to archive machine.');
+      setArchiveTarget(null);
+      setErrorMessage(err.response?.data?.error?.message || 'Machine could not be archived.');
     },
   });
 
@@ -159,6 +187,7 @@ export const MachinesView: React.FC = () => {
   };
 
   const machines = machinesData?.content || [];
+  const anyDialogOpen = isCreateModalOpen || !!editingMachine || !!statusChangeMachine;
   const canManage = hasRole('ADMIN', 'PRODUCTION_MANAGER', 'ENGINEER');
 
   return (
@@ -166,7 +195,7 @@ export const MachinesView: React.FC = () => {
       {/* Header & Controls */}
       <div className="bg-substrate-card border border-substrate-border p-4 sm:p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
-          <div className="text-[11px] font-mono uppercase tracking-widest text-industrial-500">
+          <div className="text-xs font-mono uppercase tracking-widest text-industrial-500">
             [ ASSET REGISTRY // MACHINERY ]
           </div>
           <h1 className="text-xl sm:text-2xl font-bold font-mono uppercase text-white tracking-tight flex items-center gap-2 mt-0.5">
@@ -184,32 +213,33 @@ export const MachinesView: React.FC = () => {
               setIsCreateModalOpen(true);
             }}
           >
-            <Plus size={16} className="mr-1" />
-            <span>REGISTER NEW MACHINE</span>
+            <Plus size={16} className="mr-1" aria-hidden="true" />
+            <span>REGISTER MACHINE</span>
           </IndustrialButton>
         )}
       </div>
 
-      {/* Global Error Banner */}
-      {errorMessage && (
-        <div className="p-3 bg-red-950/80 border border-hazard-red text-hazard-red text-xs font-mono flex items-center justify-between">
-          <span>[ ERROR ]: {errorMessage}</span>
-          <button onClick={() => setErrorMessage(null)} className="text-white hover:underline">
-            DISMISS
-          </button>
-        </div>
+      {/* Page-level errors only; dialog errors render inside their dialog */}
+      {errorMessage && !anyDialogOpen && (
+        <Banner tone="error" onDismiss={() => setErrorMessage(null)}>
+          {errorMessage}
+        </Banner>
       )}
 
       {/* Filter & Search Bar */}
       <div className="bg-substrate-card border border-substrate-border p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
         <div className="flex items-center gap-2 w-full sm:w-auto">
-          <span className="text-xs font-mono uppercase text-industrial-400 shrink-0">STATUS:</span>
-          <div className="flex gap-1">
+          <span id="machine-status-filter" className="text-xs font-mono uppercase text-industrial-400 shrink-0">STATUS:</span>
+          <div className="flex gap-1 overflow-x-auto no-scrollbar" role="group" aria-labelledby="machine-status-filter">
             {(['', 'IDLE', 'RUNNING', 'DOWN'] as const).map((st) => (
               <button
                 key={st}
-                onClick={() => setStatusFilter(st)}
-                className={`px-2.5 py-1 text-xs font-mono uppercase border transition-colors ${
+                onClick={() => {
+                  setStatusFilter(st);
+                  setPage(0);
+                }}
+                aria-pressed={statusFilter === st}
+                className={`px-3 min-h-[44px] text-xs font-mono uppercase border transition-colors ${
                   statusFilter === st
                     ? 'bg-industrial-700 text-white border-industrial-400 font-bold'
                     : 'bg-industrial-900 text-industrial-400 border-substrate-border hover:text-white'
@@ -222,42 +252,57 @@ export const MachinesView: React.FC = () => {
         </div>
 
         <div className="relative w-full sm:w-72">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-industrial-500" />
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-industrial-400" aria-hidden="true" />
           <input
-            type="text"
+            type="search"
+            aria-label="Search machines by name or serial number"
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="SEARCH ASSETS / SERIAL..."
-            className="w-full bg-industrial-900 border border-substrate-border pl-9 pr-3 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-industrial-400"
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setPage(0);
+            }}
+            placeholder="Search name or serial"
+            className="w-full bg-industrial-900 border border-substrate-border pl-9 pr-3 min-h-[44px] text-sm text-white font-mono focus:outline-none focus:border-industrial-400"
           />
         </div>
       </div>
 
+      {isError && (
+        <ErrorState title="Machines could not be loaded" error={loadError} onRetry={() => refetch()} isRetrying={isFetching} />
+      )}
+
       {/* Machine Table */}
       <div className="bg-substrate-card border border-substrate-border overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left font-mono text-xs border-collapse">
+          <table className="w-full text-left font-mono text-xs border-collapse" aria-busy={isLoading}>
+            <caption className="sr-only">Registered machines</caption>
             <thead>
               <tr className="border-b border-substrate-border bg-industrial-900 text-industrial-400 uppercase">
-                <th className="p-3">SERIAL NUMBER</th>
-                <th className="p-3">MACHINE NAME</th>
-                <th className="p-3">LOCATION</th>
-                <th className="p-3">STATUS</th>
-                <th className="p-3">VERSION</th>
-                <th className="p-3 text-right">ACTIONS</th>
+                <th scope="col" className="p-3">SERIAL NUMBER</th>
+                <th scope="col" className="p-3">MACHINE NAME</th>
+                <th scope="col" className="p-3">LOCATION</th>
+                <th scope="col" className="p-3">STATUS</th>
+                <th scope="col" className="p-3">VERSION</th>
+                <th scope="col" className="p-3 text-right">ACTIONS</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-substrate-border">
               {isLoading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <tr key={i}>
+                    <td colSpan={6} className="p-3">
+                      <div className="h-6 bg-industrial-900 animate-pulse" />
+                    </td>
+                  </tr>
+                ))
+              ) : machines.length === 0 && !isError ? (
                 <tr>
-                  <td colSpan={6} className="p-6 text-center text-industrial-500">
-                    SCANNING ASSETS...
-                  </td>
-                </tr>
-              ) : machines.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="p-6 text-center text-industrial-500">
-                    NO MATCHING MACHINE ASSETS FOUND.
+                  <td colSpan={6} className="p-6 text-center text-sm text-industrial-300">
+                    {debouncedSearch || statusFilter
+                      ? 'No machines match these filters.'
+                      : canManage
+                      ? 'No machines registered yet. Use Register machine to add the first one.'
+                      : 'No machines registered yet.'}
                   </td>
                 </tr>
               ) : (
@@ -267,7 +312,7 @@ export const MachinesView: React.FC = () => {
                     <td className="p-3 text-industrial-200">
                       <div>{m.name}</div>
                       {m.description && (
-                        <div className="text-[10px] text-industrial-500 truncate max-w-xs">
+                        <div className="text-xs text-industrial-500 truncate max-w-xs">
                           {m.description}
                         </div>
                       )}
@@ -280,34 +325,33 @@ export const MachinesView: React.FC = () => {
                     <td className="p-3 text-right">
                       <div className="flex items-center justify-end gap-1.5">
                         <button
+                          type="button"
                           onClick={() => handleOpenStatus(m)}
-                          className="p-1.5 bg-industrial-900 border border-substrate-border hover:border-industrial-400 text-industrial-300 hover:text-white"
-                          title="Toggle Status"
+                          className={ROW_ACTION_CLASS}
+                          aria-label={`Change status of ${m.name}`}
                         >
-                          <Power size={14} />
+                          <Power size={16} aria-hidden="true" />
                         </button>
 
                         {canManage && (
                           <button
+                            type="button"
                             onClick={() => handleOpenEdit(m)}
-                            className="p-1.5 bg-industrial-900 border border-substrate-border hover:border-industrial-400 text-industrial-300 hover:text-white"
-                            title="Edit Machine"
+                            className={ROW_ACTION_CLASS}
+                            aria-label={`Edit ${m.name}`}
                           >
-                            <Edit2 size={14} />
+                            <Edit2 size={16} aria-hidden="true" />
                           </button>
                         )}
 
                         {isAdmin && (
                           <button
-                            onClick={() => {
-                              if (confirm(`Archive machine ${m.name} (${m.serialNumber})?`)) {
-                                archiveMutation.mutate({ id: m.id, version: m.version });
-                              }
-                            }}
-                            className="p-1.5 bg-industrial-900 border border-substrate-border hover:border-hazard-red text-industrial-400 hover:text-hazard-red"
-                            title="Archive Machine"
+                            type="button"
+                            onClick={() => setArchiveTarget(m)}
+                            className={`${ROW_ACTION_CLASS} hover:border-hazard-red hover:text-hazard-red`}
+                            aria-label={`Archive ${m.name}`}
                           >
-                            <Trash2 size={14} />
+                            <Trash2 size={16} aria-hidden="true" />
                           </button>
                         )}
                       </div>
@@ -327,16 +371,18 @@ export const MachinesView: React.FC = () => {
             </span>
             <div className="flex gap-2">
               <IndustrialButton
-                size="sm"
+                size="md"
                 variant="outline"
+                aria-label="Previous page"
                 disabled={machinesData.page === 0}
                 onClick={() => setPage(p => Math.max(0, p - 1))}
               >
                 PREV
               </IndustrialButton>
               <IndustrialButton
-                size="sm"
+                size="md"
                 variant="outline"
+                aria-label="Next page"
                 disabled={machinesData.last}
                 onClick={() => setPage(p => p + 1)}
               >
@@ -351,62 +397,67 @@ export const MachinesView: React.FC = () => {
       <Modal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
-        title="REGISTER MACHINE ASSET"
-        subtitle="Provision physical factory floor machinery into operating registry"
+        title="Register machine"
+        subtitle="Add a machine to this plant's asset list."
       >
         <form onSubmit={handleCreateSubmit} className="space-y-4">
+          <DialogError message={errorMessage} />
           <div>
-            <label className="block text-xs font-mono uppercase text-industrial-400 mb-1">
-              Serial Number (Unique Identifier) *
+            <label htmlFor="machine-serial" className="block text-xs font-mono uppercase text-industrial-300 mb-1">
+              Serial number *
             </label>
             <input
+              id="machine-serial"
               type="text"
               required
               value={serialNumber}
               onChange={(e) => setSerialNumber(e.target.value.toUpperCase())}
               placeholder="CNC-PLANT1-004"
-              className="w-full bg-industrial-900 border border-substrate-border px-3 py-2 text-sm text-white font-mono uppercase focus:outline-none focus:border-industrial-400"
+              className={`${FIELD_CLASS} uppercase`}
             />
           </div>
 
           <div>
-            <label className="block text-xs font-mono uppercase text-industrial-400 mb-1">
-              Machine Model / Designation *
+            <label htmlFor="machine-name" className="block text-xs font-mono uppercase text-industrial-300 mb-1">
+              Machine name *
             </label>
             <input
+              id="machine-name"
               type="text"
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="5-Axis Precision CNC Mill"
-              className="w-full bg-industrial-900 border border-substrate-border px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-industrial-400"
+              className={FIELD_CLASS}
             />
           </div>
 
           <div>
-            <label className="block text-xs font-mono uppercase text-industrial-400 mb-1">
-              Floor Location / Bay *
+            <label htmlFor="machine-location" className="block text-xs font-mono uppercase text-industrial-300 mb-1">
+              Location *
             </label>
             <input
+              id="machine-location"
               type="text"
               required
               value={location}
               onChange={(e) => setLocation(e.target.value)}
               placeholder="Bay 3 - Machining Line B"
-              className="w-full bg-industrial-900 border border-substrate-border px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-industrial-400"
+              className={FIELD_CLASS}
             />
           </div>
 
           <div>
-            <label className="block text-xs font-mono uppercase text-industrial-400 mb-1">
-              Technical Specifications / Notes
+            <label htmlFor="machine-notes" className="block text-xs font-mono uppercase text-industrial-300 mb-1">
+              Notes
             </label>
             <textarea
+              id="machine-notes"
               rows={3}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Operating tolerances, spindle specs, preventive maintenance schedules..."
-              className="w-full bg-industrial-900 border border-substrate-border p-2.5 text-sm text-white font-mono focus:outline-none focus:border-industrial-400 resize-none"
+              className={`${FIELD_CLASS} resize-none`}
             />
           </div>
 
@@ -434,45 +485,49 @@ export const MachinesView: React.FC = () => {
       <Modal
         isOpen={!!editingMachine}
         onClose={() => setEditingMachine(null)}
-        title="UPDATE MACHINE SPECIFICATION"
+        title="Edit machine"
         subtitle={editingMachine ? `Serial: ${editingMachine.serialNumber} (v${editingMachine.version})` : ''}
       >
         <form onSubmit={handleUpdateSubmit} className="space-y-4">
+          <DialogError message={errorMessage} />
           <div>
-            <label className="block text-xs font-mono uppercase text-industrial-400 mb-1">
-              Machine Designation *
+            <label htmlFor="edit-machine-name" className="block text-xs font-mono uppercase text-industrial-300 mb-1">
+              Machine name *
             </label>
             <input
+              id="edit-machine-name"
               type="text"
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full bg-industrial-900 border border-substrate-border px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-industrial-400"
+              className={FIELD_CLASS}
             />
           </div>
 
           <div>
-            <label className="block text-xs font-mono uppercase text-industrial-400 mb-1">
-              Floor Location *
+            <label htmlFor="edit-machine-location" className="block text-xs font-mono uppercase text-industrial-300 mb-1">
+              Location *
             </label>
             <input
+              id="edit-machine-location"
               type="text"
               required
               value={location}
               onChange={(e) => setLocation(e.target.value)}
-              className="w-full bg-industrial-900 border border-substrate-border px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-industrial-400"
+              className={FIELD_CLASS}
             />
           </div>
 
           <div>
-            <label className="block text-xs font-mono uppercase text-industrial-400 mb-1">
-              Technical Description
+            <label htmlFor="edit-machine-notes" className="block text-xs font-mono uppercase text-industrial-300 mb-1">
+              Notes
             </label>
             <textarea
+              id="edit-machine-notes"
               rows={3}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full bg-industrial-900 border border-substrate-border p-2.5 text-sm text-white font-mono focus:outline-none focus:border-industrial-400 resize-none"
+              className={`${FIELD_CLASS} resize-none`}
             />
           </div>
 
@@ -496,23 +551,40 @@ export const MachinesView: React.FC = () => {
         </form>
       </Modal>
 
+      <ConfirmDialog
+        isOpen={!!archiveTarget}
+        title="Archive machine?"
+        message={
+          archiveTarget
+            ? `${archiveTarget.name} (${archiveTarget.serialNumber}) will be removed from active lists. Its history stays in the audit log.`
+            : ''
+        }
+        confirmLabel="Archive machine"
+        isLoading={archiveMutation.isPending}
+        onCancel={() => setArchiveTarget(null)}
+        onConfirm={() => archiveTarget && archiveMutation.mutate({ id: archiveTarget.id, version: archiveTarget.version })}
+      />
+
       {/* Status Change Modal */}
       <Modal
         isOpen={!!statusChangeMachine}
         onClose={() => setStatusChangeMachine(null)}
-        title="OVERRIDE MACHINE OPERATIONAL STATE"
+        title="Change machine status"
         subtitle={statusChangeMachine ? `${statusChangeMachine.name} (${statusChangeMachine.serialNumber})` : ''}
       >
         <form onSubmit={handleStatusSubmit} className="space-y-4">
+          <DialogError message={errorMessage} />
           <div>
-            <label className="block text-xs font-mono uppercase text-industrial-400 mb-2">
-              Select Target Operating State
-            </label>
-            <div className="grid grid-cols-3 gap-3">
+            <div id="status-choice-label" className="block text-xs font-mono uppercase text-industrial-300 mb-2">
+              New status
+            </div>
+            <div className="grid grid-cols-3 gap-3" role="radiogroup" aria-labelledby="status-choice-label">
               {(['IDLE', 'RUNNING', 'DOWN'] as const).map((st) => (
                 <button
                   type="button"
                   key={st}
+                  role="radio"
+                  aria-checked={newStatus === st}
                   onClick={() => setNewStatus(st)}
                   className={`p-3 border text-xs font-mono uppercase font-bold flex flex-col items-center justify-center gap-1.5 transition-all ${
                     newStatus === st
@@ -531,9 +603,14 @@ export const MachinesView: React.FC = () => {
             </div>
           </div>
 
-          <div className="text-xs font-mono text-industrial-500 bg-industrial-900 p-3 border border-substrate-border">
-            [ NOTE ]: Transitioning state will record an immutable audit trace under your operator identity.
-          </div>
+          {newStatus === 'DOWN' && statusChangeMachine?.status !== 'DOWN' && (
+            <div role="note" className="text-xs font-mono text-hazard-amber bg-amber-950/40 p-3 border border-hazard-amber/60">
+              Marking a machine down stops it counting as available. Use Report breakdown on the dashboard if maintenance is needed.
+            </div>
+          )}
+          <p className="text-xs font-mono text-industrial-400">
+            This change is recorded in the audit log under your name.
+          </p>
 
           <div className="flex justify-end gap-3 pt-4 border-t border-substrate-border">
             <IndustrialButton
@@ -549,7 +626,7 @@ export const MachinesView: React.FC = () => {
               size="lg"
               isLoading={statusMutation.isPending}
             >
-              COMMIT STATE OVERRIDE
+              Save status
             </IndustrialButton>
           </div>
         </form>

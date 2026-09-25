@@ -15,6 +15,8 @@ import {
 import { IndustrialButton } from '../common/IndustrialButton';
 import { IndustrialBadge } from '../common/IndustrialBadge';
 import { Modal } from '../common/Modal';
+import { Banner } from '../common/Banner';
+import { ErrorState } from '../common/ErrorState';
 import { 
   AlertTriangle, 
   CheckCircle, 
@@ -58,7 +60,14 @@ export const DowntimeView: React.FC = () => {
   });
 
   // Fetch Downtime Events
-  const { data: downtimeData, isLoading } = useQuery<PagedResponse<DowntimeEventDto>>({
+  const {
+    data: downtimeData,
+    isLoading,
+    isError: isEventsError,
+    error: eventsError,
+    refetch: refetchEvents,
+    isFetching: isEventsFetching,
+  } = useQuery<PagedResponse<DowntimeEventDto>>({
     queryKey: ['downtime-events', openOnly, selectedMachineFilter, page],
     queryFn: () =>
       api.get<PagedResponse<DowntimeEventDto>>('/downtime-events', {
@@ -67,14 +76,14 @@ export const DowntimeView: React.FC = () => {
         page,
         size: 15,
       }),
-    refetchInterval: 4000,
+    refetchInterval: 5000,
   });
 
   // Fetch Pending Root-Cause Events (for Attention Banner & Operator Prompts)
   const { data: pendingRootCauses = [] } = useQuery<DowntimeEventDto[]>({
     queryKey: ['pending-root-causes'],
     queryFn: () => downtimeApi.getPendingRootCauses(),
-    refetchInterval: 3000,
+    refetchInterval: 5000,
   });
 
   // Fetch Micro-Stop Summary for Selected Machine
@@ -202,6 +211,9 @@ export const DowntimeView: React.FC = () => {
 
   const machines = machinesData?.content || [];
   const events = downtimeData?.content || [];
+  const summaryMachineId = selectedMachineFilter || machines[0]?.id;
+  const summaryMachine = machines.find((m) => m.id === summaryMachineId);
+  const anyDialogOpen = isLogModalOpen || !!resolvingEvent || !!acknowledgingEvent;
 
   const getReasonBadge = (code: DowntimeReasonCode) => {
     switch (code) {
@@ -229,20 +241,20 @@ export const DowntimeView: React.FC = () => {
     switch (source) {
       case 'AUTOMATED_SENSOR':
         return (
-          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-mono uppercase bg-cyan-950/70 text-cyan-400 border border-cyan-800/80">
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs font-mono uppercase bg-cyan-950/70 text-cyan-400 border border-cyan-800/80">
             <Zap size={10} /> AUTO SENSOR
           </span>
         );
       case 'HEARTBEAT_TIMEOUT':
         return (
-          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-mono uppercase bg-amber-950/70 text-amber-400 border border-amber-800/80">
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs font-mono uppercase bg-amber-950/70 text-amber-400 border border-amber-800/80">
             <Timer size={10} /> HEARTBEAT TIMEOUT
           </span>
         );
       case 'MANUAL':
       default:
         return (
-          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] font-mono uppercase bg-industrial-800 text-industrial-300 border border-industrial-700">
+          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-xs font-mono uppercase bg-industrial-800 text-industrial-300 border border-industrial-700">
             MANUAL OPERATOR
           </span>
         );
@@ -254,10 +266,8 @@ export const DowntimeView: React.FC = () => {
       {/* Header */}
       <div className="bg-substrate-card border border-substrate-border p-4 sm:p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
-          <div className="text-[11px] font-mono uppercase tracking-widest text-industrial-500 flex items-center gap-2">
-            <span>[ SPRINT 7 // E4-S3 ]</span>
-            <span>•</span>
-            <span>AUTOMATED MICRO-STOP & DOWNTIME ENGINE</span>
+          <div className="text-xs font-mono uppercase tracking-widest text-industrial-500 flex items-center gap-2">
+            <span>Automated micro-stop detection</span>
           </div>
           <h1 className="text-xl sm:text-2xl font-bold font-mono uppercase text-white tracking-tight flex items-center gap-2 mt-0.5">
             <AlertTriangle size={22} className="text-hazard-red" />
@@ -295,16 +305,16 @@ export const DowntimeView: React.FC = () => {
 
       {/* Operator Attention Banner for Pending Root Causes */}
       {pendingRootCauses.length > 0 && (
-        <div className="bg-amber-950/90 border-2 border-amber-500 p-4 shadow-lg animate-pulse">
+        <div role="alert" className="bg-amber-950/90 border-2 border-amber-500 p-4">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <AlertOctagon size={24} className="text-amber-400 shrink-0" />
+              <AlertOctagon size={24} className="text-amber-400 shrink-0 animate-beacon" aria-hidden="true" />
               <div>
                 <div className="text-xs font-mono font-bold uppercase text-amber-200 tracking-wider">
-                  ⚠️ OPERATOR ROOT-CAUSE ACTION REQUIRED ({pendingRootCauses.length} PENDING)
+                  ROOT CAUSE REQUIRED ({pendingRootCauses.length} PENDING)
                 </div>
                 <div className="text-xs font-mono text-amber-300 mt-0.5">
-                  Machine stoppage has exceeded 180 seconds (3 minutes). Classify root cause code to satisfy OEE audit trail.
+                  A stop lasted longer than 3 minutes. Pick a root cause so the loss is counted correctly in OEE.
                 </div>
               </div>
             </div>
@@ -326,22 +336,23 @@ export const DowntimeView: React.FC = () => {
       )}
 
       {/* Feedback Banners */}
-      {errorMessage && (
-        <div className="p-3 bg-red-950/80 border border-hazard-red text-hazard-red text-xs font-mono flex items-center justify-between">
-          <span>[ ERROR ]: {errorMessage}</span>
-          <button onClick={() => setErrorMessage(null)} className="text-white hover:underline">
-            DISMISS
-          </button>
-        </div>
+      {errorMessage && !anyDialogOpen && (
+        <Banner tone="error" onDismiss={() => setErrorMessage(null)}>
+          {errorMessage}
+        </Banner>
       )}
 
       {successMessage && (
-        <div className="p-3 bg-emerald-950/80 border border-emerald-500 text-emerald-400 text-xs font-mono flex items-center justify-between">
-          <span>[ SUCCESS ]: {successMessage}</span>
-          <button onClick={() => setSuccessMessage(null)} className="text-white hover:underline">
-            DISMISS
-          </button>
-        </div>
+        <Banner tone="success" onDismiss={() => setSuccessMessage(null)}>
+          {successMessage}
+        </Banner>
+      )}
+
+      {summaryMachine && (
+        <p className="text-xs font-mono text-industrial-400">
+          Stop statistics for <span className="text-white">{summaryMachine.name}</span>
+          {!selectedMachineFilter && ' (first machine; pick one in the filter below to change)'}
+        </p>
       )}
 
       {/* Micro-Stop & Outage Analytics Grid */}
@@ -352,12 +363,12 @@ export const DowntimeView: React.FC = () => {
             <span className="flex items-center gap-1.5">
               <Zap size={14} /> MICRO-STOPS (&lt;180s)
             </span>
-            <span className="text-[10px] text-industrial-500">AUTO-RESOLVED</span>
+            <span className="text-xs text-industrial-500">AUTO-RESOLVED</span>
           </div>
           <div className="text-2xl font-bold font-mono text-white mt-1">
             {microStopSummary ? microStopSummary.microStopCount : '—'}
           </div>
-          <div className="text-[11px] font-mono text-industrial-400 mt-1 flex items-center justify-between">
+          <div className="text-xs font-mono text-industrial-400 mt-1 flex items-center justify-between">
             <span>LOST DURATION:</span>
             <span className="text-cyan-300 font-bold">
               {microStopSummary ? `${microStopSummary.totalMicroStopDurationSeconds}s` : '—'}
@@ -377,12 +388,12 @@ export const DowntimeView: React.FC = () => {
             <span className="flex items-center gap-1.5">
               <AlertTriangle size={14} /> MAJOR OUTAGES (&ge;180s)
             </span>
-            <span className="text-[10px] text-industrial-500">REQUIRES ACK</span>
+            <span className="text-xs text-industrial-500">REQUIRES ACK</span>
           </div>
           <div className="text-2xl font-bold font-mono text-white mt-1">
             {microStopSummary ? microStopSummary.majorDowntimeCount : '—'}
           </div>
-          <div className="text-[11px] font-mono text-industrial-400 mt-1 flex items-center justify-between">
+          <div className="text-xs font-mono text-industrial-400 mt-1 flex items-center justify-between">
             <span>LOST DURATION:</span>
             <span className="text-hazard-red font-bold">
               {microStopSummary ? `${Math.round(microStopSummary.totalMajorDowntimeDurationSeconds / 60)} min` : '—'}
@@ -402,12 +413,12 @@ export const DowntimeView: React.FC = () => {
             <span className="flex items-center gap-1.5">
               <BarChart2 size={14} /> MICRO-STOP FREQ RATIO
             </span>
-            <span className="text-[10px] text-industrial-500">OEE IMPACT</span>
+            <span className="text-xs text-industrial-500">OEE IMPACT</span>
           </div>
           <div className="text-2xl font-bold font-mono text-white mt-1">
             {microStopSummary ? `${microStopSummary.microStopPercentage.toFixed(1)}%` : '—'}
           </div>
-          <div className="text-[11px] font-mono text-industrial-400 mt-1">
+          <div className="text-xs font-mono text-industrial-400 mt-1">
             Proportion of events resolved &lt; 3 minutes
           </div>
           <div className="w-full bg-industrial-900 h-1 mt-2">
@@ -420,20 +431,17 @@ export const DowntimeView: React.FC = () => {
 
         {/* Total Sensor Detection Status */}
         <div className="bg-substrate-card border border-substrate-border p-4 relative overflow-hidden">
-          <div className="flex items-center justify-between text-xs font-mono uppercase text-terminal-green mb-1">
+          <div className={`flex items-center justify-between text-xs font-mono uppercase mb-1 ${pendingRootCauses.length > 0 ? 'text-hazard-amber' : 'text-terminal-green'}`}>
             <span className="flex items-center gap-1.5">
-              <Activity size={14} /> DETECTION LATENCY
+              <Activity size={14} aria-hidden="true" /> AWAITING ROOT CAUSE
             </span>
-            <span className="text-[10px] text-terminal-green font-bold">&le; 5.0 SEC</span>
+            <span className="text-xs text-industrial-400">ALL MACHINES</span>
           </div>
-          <div className="text-2xl font-bold font-mono text-white mt-1">
-            ACTIVE
+          <div className="text-2xl font-bold font-mono text-white mt-1 tabular-nums">
+            {pendingRootCauses.length}
           </div>
-          <div className="text-[11px] font-mono text-industrial-400 mt-1">
-            Heartbeat & cycle threshold monitoring
-          </div>
-          <div className="w-full bg-industrial-900 h-1 mt-2">
-            <div className="bg-terminal-green h-1 w-full" />
+          <div className="text-xs font-mono text-industrial-400 mt-1">
+            {pendingRootCauses.length > 0 ? 'Stops over 3 minutes need a reason' : 'Every long stop has a reason'}
           </div>
         </div>
       </div>
@@ -441,49 +449,65 @@ export const DowntimeView: React.FC = () => {
       {/* Filter Bar */}
       <div className="bg-substrate-card border border-substrate-border p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
         <div className="flex items-center gap-2 w-full sm:w-auto">
-          <span className="text-xs font-mono uppercase text-industrial-400 shrink-0">VIEW:</span>
-          <div className="flex flex-wrap gap-1">
+          <span id="downtime-view-filter" className="text-xs font-mono uppercase text-industrial-400 shrink-0">VIEW:</span>
+          <div className="flex flex-wrap gap-1" role="group" aria-labelledby="downtime-view-filter">
             <button
-              onClick={() => setOpenOnly(true)}
-              className={`px-3 py-1 text-xs font-mono uppercase border transition-colors ${
+              type="button"
+              aria-pressed={openOnly === true}
+              onClick={() => {
+                setOpenOnly(true);
+                setPage(0);
+              }}
+              className={`px-3 min-h-[44px] text-xs font-mono uppercase border transition-colors ${
                 openOnly === true
                   ? 'bg-red-950 text-hazard-red border-hazard-red font-bold'
                   : 'bg-industrial-900 text-industrial-400 border-substrate-border hover:text-white'
               }`}
             >
-              OPEN STOPPAGES ONLY
+              OPEN
             </button>
             <button
-              onClick={() => setOpenOnly(false)}
-              className={`px-3 py-1 text-xs font-mono uppercase border transition-colors ${
+              type="button"
+              aria-pressed={openOnly === false}
+              onClick={() => {
+                setOpenOnly(false);
+                setPage(0);
+              }}
+              className={`px-3 min-h-[44px] text-xs font-mono uppercase border transition-colors ${
                 openOnly === false
                   ? 'bg-industrial-700 text-white border-industrial-400 font-bold'
                   : 'bg-industrial-900 text-industrial-400 border-substrate-border hover:text-white'
               }`}
             >
-              RESOLVED LOG
+              RESOLVED
             </button>
             <button
-              onClick={() => setOpenOnly(undefined)}
-              className={`px-3 py-1 text-xs font-mono uppercase border transition-colors ${
+              type="button"
+              aria-pressed={openOnly === undefined}
+              onClick={() => {
+                setOpenOnly(undefined);
+                setPage(0);
+              }}
+              className={`px-3 min-h-[44px] text-xs font-mono uppercase border transition-colors ${
                 openOnly === undefined
                   ? 'bg-industrial-700 text-white border-industrial-400 font-bold'
                   : 'bg-industrial-900 text-industrial-400 border-substrate-border hover:text-white'
               }`}
             >
-              ALL EVENTS
+              ALL
             </button>
           </div>
         </div>
 
         <div className="w-full sm:w-72 flex items-center gap-2">
           <select
+            aria-label="Filter by machine"
             value={selectedMachineFilter}
             onChange={(e) => {
               setSelectedMachineFilter(e.target.value);
               setPage(0);
             }}
-            className="w-full bg-industrial-900 border border-substrate-border px-3 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-industrial-400"
+            className="w-full bg-industrial-900 border border-substrate-border px-3 min-h-[44px] text-sm text-white font-mono focus:outline-none focus:border-industrial-400"
           >
             <option value="">ALL MACHINES</option>
             {machines.map((m) => (
@@ -496,40 +520,56 @@ export const DowntimeView: React.FC = () => {
           <IndustrialButton
             size="sm"
             variant="outline"
-            onClick={() => refetchSummary()}
-            title="Refresh summary statistics"
+            onClick={() => {
+              refetchSummary();
+              refetchEvents();
+            }}
+            aria-label="Refresh downtime data"
+            className="min-w-[44px] min-h-[44px]"
           >
-            <RefreshCw size={14} className={isSummaryLoading ? 'animate-spin' : ''} />
+            <RefreshCw size={14} className={isSummaryLoading || isEventsFetching ? 'animate-spin' : ''} aria-hidden="true" />
           </IndustrialButton>
         </div>
       </div>
 
+      {isEventsError && (
+        <ErrorState
+          title="Downtime events could not be loaded"
+          error={eventsError}
+          onRetry={() => refetchEvents()}
+          isRetrying={isEventsFetching}
+        />
+      )}
+
       {/* Downtime Events List / Table */}
       <div className="bg-substrate-card border border-substrate-border overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left font-mono text-xs border-collapse">
+          <table className="w-full text-left font-mono text-xs border-collapse" aria-busy={isLoading}>
+            <caption className="sr-only">Downtime events</caption>
             <thead>
               <tr className="border-b border-substrate-border bg-industrial-900 text-industrial-400 uppercase">
-                <th className="p-3">MACHINE</th>
-                <th className="p-3">TRIGGER SOURCE</th>
-                <th className="p-3">REASON CODE</th>
-                <th className="p-3">START TIME</th>
-                <th className="p-3">DURATION / STATUS</th>
-                <th className="p-3">ROOT CAUSE & NOTES</th>
-                <th className="p-3 text-right">ACTION</th>
+                <th scope="col" className="p-3">MACHINE</th>
+                <th scope="col" className="p-3">SOURCE</th>
+                <th scope="col" className="p-3">REASON</th>
+                <th scope="col" className="p-3">STARTED</th>
+                <th scope="col" className="p-3">DURATION</th>
+                <th scope="col" className="p-3">ROOT CAUSE & NOTES</th>
+                <th scope="col" className="p-3 text-right">ACTION</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-substrate-border">
               {isLoading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <tr key={i}>
+                    <td colSpan={7} className="p-3">
+                      <div className="h-6 bg-industrial-900 animate-pulse" />
+                    </td>
+                  </tr>
+                ))
+              ) : events.length === 0 && !isEventsError ? (
                 <tr>
-                  <td colSpan={7} className="p-6 text-center text-industrial-500">
-                    SCANNING TELEMETRY & DOWNTIME LOGS...
-                  </td>
-                </tr>
-              ) : events.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="p-6 text-center text-industrial-500">
-                    NO DOWNTIME EVENTS FOUND FOR CURRENT FILTER.
+                  <td colSpan={7} className="p-6 text-center text-sm text-industrial-300">
+                    {openOnly === true ? 'No open stops. All machines are running or idle.' : 'No downtime events match this filter.'}
                   </td>
                 </tr>
               ) : (
@@ -560,7 +600,7 @@ export const DowntimeView: React.FC = () => {
                           <Cpu size={14} className="text-industrial-400" />
                           <span>{ev.machineName}</span>
                         </div>
-                        <div className="text-[10px] text-industrial-500 mt-0.5">
+                        <div className="text-xs text-industrial-500 mt-0.5">
                           ID: {ev.id.substring(0, 8)}...
                         </div>
                       </td>
@@ -573,7 +613,7 @@ export const DowntimeView: React.FC = () => {
                         <div className="space-y-1">
                           {getReasonBadge(ev.reasonCode)}
                           {ev.isMicroStop && (
-                            <div className="text-[10px] text-cyan-400 font-bold flex items-center gap-1">
+                            <div className="text-xs text-cyan-400 font-bold flex items-center gap-1">
                               <Zap size={10} /> &lt; 180s AUTO
                             </div>
                           )}
@@ -586,8 +626,8 @@ export const DowntimeView: React.FC = () => {
 
                       <td className="p-3">
                         {isOpen ? (
-                          <div className="flex items-center gap-1.5 text-hazard-red font-bold animate-pulse">
-                            <Clock size={12} />
+                          <div className="flex items-center gap-1.5 text-hazard-red font-bold">
+                            <Clock size={12} aria-hidden="true" />
                             <span>OPEN ({durationSeconds}s / {durationMinutes}m)</span>
                           </div>
                         ) : (
@@ -596,7 +636,7 @@ export const DowntimeView: React.FC = () => {
                               <CheckCircle size={12} />
                               <span>{durationSeconds < 180 ? `${durationSeconds}s` : `${durationMinutes}m`}</span>
                             </div>
-                            <div className="text-[10px] text-industrial-500">
+                            <div className="text-xs text-industrial-500">
                               BY: {ev.resolverName || (ev.isMicroStop ? 'SYSTEM (AUTO)' : 'SYSTEM')}
                             </div>
                           </div>
@@ -607,17 +647,17 @@ export const DowntimeView: React.FC = () => {
                         {isPromptPending ? (
                           <div className="text-amber-400 font-bold flex items-center gap-1">
                             <AlertOctagon size={12} />
-                            <span>ATTENTION: CLASSIFICATION REQUIRED (&ge;3 MINS)</span>
+                            <span>Root cause needed</span>
                           </div>
                         ) : ev.rootCauseAcknowledgedAt ? (
-                          <div className="text-terminal-green text-[11px]">
+                          <div className="text-terminal-green text-xs">
                             ✓ Root cause acknowledged
                           </div>
                         ) : null}
 
                         {ev.description && <div className="text-white mt-0.5">{ev.description}</div>}
                         {ev.resolutionNote && (
-                          <div className="text-[11px] text-industrial-400 mt-0.5 italic">
+                          <div className="text-xs text-industrial-400 mt-0.5 italic">
                             RES: {ev.resolutionNote}
                           </div>
                         )}
@@ -704,10 +744,10 @@ export const DowntimeView: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-mono uppercase text-industrial-400 mb-1">
+            <label htmlFor="downtime-field-1" className="block text-xs font-mono uppercase text-industrial-400 mb-1">
               Verified Root Cause Classification *
             </label>
-            <select
+            <select id="downtime-field-1"
               required
               value={ackReasonCode}
               onChange={(e) => setAckReasonCode(e.target.value as DowntimeReasonCode)}
@@ -724,10 +764,10 @@ export const DowntimeView: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-mono uppercase text-industrial-400 mb-1">
+            <label htmlFor="downtime-field-2" className="block text-xs font-mono uppercase text-industrial-400 mb-1">
               Root-Cause Observations & Corrective Notes
             </label>
-            <textarea
+            <textarea id="downtime-field-2"
               rows={3}
               value={ackNote}
               onChange={(e) => setAckNote(e.target.value)}
@@ -766,10 +806,10 @@ export const DowntimeView: React.FC = () => {
       >
         <form onSubmit={handleLogSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-mono uppercase text-industrial-400 mb-1">
+            <label htmlFor="downtime-field-3" className="block text-xs font-mono uppercase text-industrial-400 mb-1">
               Target Machine *
             </label>
-            <select
+            <select id="downtime-field-3"
               required
               value={machineId}
               onChange={(e) => setMachineId(e.target.value)}
@@ -785,10 +825,10 @@ export const DowntimeView: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-mono uppercase text-industrial-400 mb-1">
+            <label htmlFor="downtime-field-4" className="block text-xs font-mono uppercase text-industrial-400 mb-1">
               Reason Classification Code *
             </label>
-            <select
+            <select id="downtime-field-4"
               required
               value={reasonCode}
               onChange={(e) => setReasonCode(e.target.value as DowntimeReasonCode)}
@@ -806,10 +846,10 @@ export const DowntimeView: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-mono uppercase text-industrial-400 mb-1">
+            <label htmlFor="downtime-field-5" className="block text-xs font-mono uppercase text-industrial-400 mb-1">
               Observations / Root Cause Notes
             </label>
-            <textarea
+            <textarea id="downtime-field-5"
               rows={3}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -847,10 +887,10 @@ export const DowntimeView: React.FC = () => {
       >
         <form onSubmit={handleResolveSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-mono uppercase text-industrial-400 mb-1">
+            <label htmlFor="downtime-field-6" className="block text-xs font-mono uppercase text-industrial-400 mb-1">
               Corrective Action & Resolution Notes *
             </label>
-            <textarea
+            <textarea id="downtime-field-6"
               rows={4}
               required
               value={resolutionNote}
